@@ -17,6 +17,7 @@ import {
 import MetricCard from '@/components/MetricCard';
 import TrendChart from '@/components/TrendChart';
 import ActivityFeed from '@/components/ActivityFeed';
+import { useCrmStore } from '@/lib/store';
 
 interface DashboardMetrics {
   totalContacts: number;
@@ -42,90 +43,36 @@ interface TrendData {
 }
 
 export default function Dashboard() {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [trendData, setTrendData] = useState<TrendData[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    metrics,
+    trends: trendData,
+    activity: activities,
+    loading,
+    error,
+    fetchData,
+  } = useCrmStore();
+
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    if (!metrics) {
+      fetchData();
+    }
+  }, [fetchData, metrics]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
     try {
-      setRefreshing(true);
-      setError(null);
-      console.log('Fetching data from API routes...');
-
-      const [metricsResponse, trendsResponse, activitiesResponse] =
-        await Promise.all([
-          fetch('/api/metrics'),
-          fetch('/api/trends?days=30'),
-          fetch('/api/activity?limit=10'),
-        ]);
-
-      console.log('API responses:', {
-        metrics: metricsResponse.status,
-        trends: trendsResponse.status,
-        activities: activitiesResponse.status,
-      });
-
-      if (
-        !metricsResponse.ok ||
-        !trendsResponse.ok ||
-        !activitiesResponse.ok
-      ) {
-        // Find the first failed response to display a more specific error
-        const failedResponse = [
-          metricsResponse,
-          trendsResponse,
-          activitiesResponse,
-        ].find((res) => !res.ok);
-        const errorData = await failedResponse?.json();
-        const errorMessage =
-          errorData?.error || 'Failed to fetch dashboard data.';
-        throw new Error(errorMessage);
-      }
-
-      const [metricsData, trendDataResult, activitiesData] =
-        await Promise.all([
-          metricsResponse.json(),
-          trendsResponse.json(),
-          activitiesResponse.json(),
-        ]);
-
-      console.log('API data received:', {
-        metrics: metricsData,
-        trends: trendDataResult.length,
-        activities: activitiesData.length,
-      });
-
-      setMetrics(metricsData);
-      setTrendData(trendDataResult);
-      setActivities(activitiesData);
-
-      if (!loading) {
-        toast.success('Data refreshed successfully!');
-      }
-    } catch (error: any) {
-      console.error('Error fetching data:', error.message);
-      const displayMessage =
-        error.message || 'An unknown error occurred.';
-      setError(displayMessage);
-      toast.error(`Error: ${displayMessage}`);
+      await fetchData();
+      toast.success('Data refreshed successfully!');
+    } catch (error) {
+      toast.error('Failed to refresh data.');
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleRefresh = () => {
-    fetchData();
-  };
-
-  if (loading) {
+  if (loading && !metrics) {
     return (
       <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
         <div className='text-center'>
@@ -276,14 +223,14 @@ export default function Dashboard() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className='lg:col-span-2 space-y-6'>
             <TrendChart
-              data={trendData}
+              data={trendData || []}
               title='Business Growth Trends (Last 30 Days)'
               type='area'
               dataKeys={['contacts', 'companies', 'deals']}
               colors={['#3b82f6', '#10b981', '#f59e0b']}
             />
             <TrendChart
-              data={trendData}
+              data={trendData || []}
               title='Revenue Trends'
               type='line'
               dataKeys={['revenue']}
@@ -296,7 +243,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}>
-            <ActivityFeed activities={activities} />
+            <ActivityFeed activities={activities || []} />
           </motion.div>
         </div>
 
