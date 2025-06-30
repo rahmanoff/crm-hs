@@ -102,14 +102,13 @@ class HubSpotService {
 
   private async makeRequest(
     endpoint: string,
-    params: Record<string, any> = {}
-  ) {
+    params: Record<string, any> = {},
+    retries = 3,
+    backoff = 2000 // Initial backoff delay in ms
+  ): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
 
     try {
-      // Add delay to respect rate limits
-      await new Promise((resolve) => setTimeout(resolve, 100)); // 100ms delay between requests
-
       const response = await axios.get(url, {
         headers: {
           Authorization: this.isPrivateApp
@@ -123,31 +122,19 @@ class HubSpotService {
 
       return response.data;
     } catch (error: any) {
-      if (error.response?.status === 429) {
-        console.log(
-          'Rate limit hit, waiting 2 seconds before retry...'
+      if (error.response?.status === 429 && retries > 0) {
+        console.warn(
+          `Rate limit hit. Retrying in ${
+            backoff / 1000
+          }s... (${retries} retries left)`
         );
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
-        // Retry once
-        try {
-          const response = await axios.get(url, {
-            headers: {
-              Authorization: this.isPrivateApp
-                ? `Bearer ${this.apiKey}`
-                : `Bearer ${this.apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            params,
-            timeout: 10000,
-          });
-          return response.data;
-        } catch (retryError: any) {
-          console.error(
-            'Retry failed:',
-            retryError.response?.data || retryError.message
-          );
-          throw retryError;
-        }
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+        return this.makeRequest(
+          endpoint,
+          params,
+          retries - 1,
+          backoff * 2
+        ); // Exponential backoff
       }
 
       console.error(
