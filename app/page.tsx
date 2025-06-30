@@ -11,7 +11,7 @@ import {
   TrendingUp,
   AlertTriangle,
   RefreshCw,
-  Settings
+  Settings,
 } from 'lucide-react';
 
 import MetricCard from '@/components/MetricCard';
@@ -47,50 +47,70 @@ export default function Dashboard() {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       setRefreshing(true);
+      setError(null);
       console.log('Fetching data from API routes...');
-      
-      const [metricsResponse, trendsResponse, activitiesResponse] = await Promise.all([
-        fetch('/api/metrics'),
-        fetch('/api/trends?days=30'),
-        fetch('/api/activity?limit=10'),
-      ]);
+
+      const [metricsResponse, trendsResponse, activitiesResponse] =
+        await Promise.all([
+          fetch('/api/metrics'),
+          fetch('/api/trends?days=30'),
+          fetch('/api/activity?limit=10'),
+        ]);
 
       console.log('API responses:', {
         metrics: metricsResponse.status,
         trends: trendsResponse.status,
-        activities: activitiesResponse.status
+        activities: activitiesResponse.status,
       });
 
-      if (!metricsResponse.ok || !trendsResponse.ok || !activitiesResponse.ok) {
-        throw new Error('Failed to fetch data from API routes');
+      if (
+        !metricsResponse.ok ||
+        !trendsResponse.ok ||
+        !activitiesResponse.ok
+      ) {
+        // Find the first failed response to display a more specific error
+        const failedResponse = [
+          metricsResponse,
+          trendsResponse,
+          activitiesResponse,
+        ].find((res) => !res.ok);
+        const errorData = await failedResponse?.json();
+        const errorMessage =
+          errorData?.error || 'Failed to fetch dashboard data.';
+        throw new Error(errorMessage);
       }
 
-      const [metricsData, trendDataResult, activitiesData] = await Promise.all([
-        metricsResponse.json(),
-        trendsResponse.json(),
-        activitiesResponse.json(),
-      ]);
+      const [metricsData, trendDataResult, activitiesData] =
+        await Promise.all([
+          metricsResponse.json(),
+          trendsResponse.json(),
+          activitiesResponse.json(),
+        ]);
 
       console.log('API data received:', {
         metrics: metricsData,
         trends: trendDataResult.length,
-        activities: activitiesData.length
+        activities: activitiesData.length,
       });
 
       setMetrics(metricsData);
       setTrendData(trendDataResult);
       setActivities(activitiesData);
-      
+
       if (!loading) {
         toast.success('Data refreshed successfully!');
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Failed to fetch data. Please check your HubSpot API key and try again.');
+    } catch (error: any) {
+      console.error('Error fetching data:', error.message);
+      const displayMessage =
+        error.message || 'An unknown error occurred.';
+      setError(displayMessage);
+      toast.error(`Error: ${displayMessage}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -107,36 +127,72 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-primary-600" />
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <RefreshCw className='w-8 h-8 animate-spin mx-auto mb-4 text-primary-600' />
+          <p className='text-gray-600'>Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='min-h-screen bg-red-50 flex items-center justify-center'>
+        <div className='text-center p-8 bg-white rounded-lg shadow-md max-w-md mx-auto'>
+          <AlertTriangle className='w-12 h-12 text-red-500 mx-auto mb-4' />
+          <h2 className='text-2xl font-bold text-gray-800 mb-2'>
+            Dashboard Error
+          </h2>
+          <p className='text-gray-600 mb-6'>{error}</p>
+          <p className='text-sm text-gray-500 mb-6'>
+            This is often caused by an invalid or missing HubSpot API
+            key. Please check your
+            <code>.env.local</code> file and ensure the{' '}
+            <code>HUBSPOT_API_KEY</code> is correct.
+          </p>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className='btn-primary flex items-center space-x-2 mx-auto'>
+            <RefreshCw
+              className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+            />
+            <span>Try Again</span>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className='min-h-screen bg-gray-50'>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+      <header className='bg-white shadow-sm border-b border-gray-200'>
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+          <div className='flex justify-between items-center py-4'>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">HubSpot CRM Dashboard</h1>
-              <p className="text-gray-600">Monitor your business metrics and trends</p>
+              <h1 className='text-2xl font-bold text-gray-900'>
+                HubSpot CRM Dashboard
+              </h1>
+              <p className='text-gray-600'>
+                Monitor your business metrics and trends
+              </p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className='flex items-center space-x-4'>
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="btn-secondary flex items-center space-x-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                className='btn-secondary flex items-center space-x-2'>
+                <RefreshCw
+                  className={`w-4 h-4 ${
+                    refreshing ? 'animate-spin' : ''
+                  }`}
+                />
                 <span>Refresh</span>
               </button>
-              <button className="btn-secondary flex items-center space-x-2">
-                <Settings className="w-4 h-4" />
+              <button className='btn-secondary flex items-center space-x-2'>
+                <Settings className='w-4 h-4' />
                 <span>Settings</span>
               </button>
             </div>
@@ -145,41 +201,40 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
         {/* Metrics Grid */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        >
+          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8'>
           <MetricCard
-            title="Total Contacts"
+            title='Total Contacts'
             value={metrics?.totalContacts || 0}
             icon={Users}
-            color="primary"
-            format="number"
+            color='primary'
+            format='number'
           />
           <MetricCard
-            title="Total Companies"
+            title='Total Companies'
             value={metrics?.totalCompanies || 0}
             icon={Building2}
-            color="success"
-            format="number"
+            color='success'
+            format='number'
           />
           <MetricCard
-            title="Active Deals"
+            title='Active Deals'
             value={metrics?.activeDeals || 0}
             icon={DollarSign}
-            color="warning"
-            format="number"
+            color='warning'
+            format='number'
           />
           <MetricCard
-            title="Total Tasks"
+            title='Total Tasks'
             value={metrics?.totalTasks || 0}
             icon={CheckSquare}
-            color="primary"
-            format="number"
+            color='primary'
+            format='number'
           />
         </motion.div>
 
@@ -188,51 +243,49 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-        >
+          className='grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'>
           <MetricCard
-            title="Total Revenue"
+            title='Total Revenue'
             value={metrics?.totalRevenue || 0}
             icon={TrendingUp}
-            color="success"
-            format="currency"
+            color='success'
+            format='currency'
           />
           <MetricCard
-            title="Average Deal Size"
+            title='Average Deal Size'
             value={metrics?.averageDealSize || 0}
             icon={DollarSign}
-            color="primary"
-            format="currency"
+            color='primary'
+            format='currency'
           />
           <MetricCard
-            title="Conversion Rate"
+            title='Conversion Rate'
             value={metrics?.conversionRate || 0}
             icon={TrendingUp}
-            color="success"
-            format="percentage"
+            color='success'
+            format='percentage'
           />
         </motion.div>
 
         {/* Charts and Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
           {/* Trend Charts */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-2 space-y-6"
-          >
+            className='lg:col-span-2 space-y-6'>
             <TrendChart
               data={trendData}
-              title="Business Growth Trends (Last 30 Days)"
-              type="area"
+              title='Business Growth Trends (Last 30 Days)'
+              type='area'
               dataKeys={['contacts', 'companies', 'deals']}
               colors={['#3b82f6', '#10b981', '#f59e0b']}
             />
             <TrendChart
               data={trendData}
-              title="Revenue Trends"
-              type="line"
+              title='Revenue Trends'
+              type='line'
               dataKeys={['revenue']}
               colors={['#8b5cf6']}
             />
@@ -242,8 +295,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
+            transition={{ duration: 0.5, delay: 0.3 }}>
             <ActivityFeed activities={activities} />
           </motion.div>
         </div>
@@ -253,43 +305,49 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="mt-8"
-        >
-          <div className="card">
-            <div className="flex items-center space-x-2 mb-4">
-              <AlertTriangle className="w-5 h-5 text-warning-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Alerts & Notifications</h3>
+          className='mt-8'>
+          <div className='card'>
+            <div className='flex items-center space-x-2 mb-4'>
+              <AlertTriangle className='w-5 h-5 text-warning-600' />
+              <h3 className='text-lg font-semibold text-gray-900'>
+                Alerts & Notifications
+              </h3>
             </div>
-            <div className="space-y-3">
+            <div className='space-y-3'>
               {metrics?.tasksOverdue && metrics.tasksOverdue > 0 && (
-                <div className="flex items-center p-3 bg-warning-50 border border-warning-200 rounded-lg">
-                  <AlertTriangle className="w-4 h-4 text-warning-600 mr-3" />
-                  <span className="text-sm text-warning-800">
-                    {metrics.tasksOverdue} overdue tasks require attention
+                <div className='flex items-center p-3 bg-warning-50 border border-warning-200 rounded-lg'>
+                  <AlertTriangle className='w-4 h-4 text-warning-600 mr-3' />
+                  <span className='text-sm text-warning-800'>
+                    {metrics.tasksOverdue} overdue tasks require
+                    attention
                   </span>
                 </div>
               )}
-              {metrics?.conversionRate && metrics.conversionRate < 20 && (
-                <div className="flex items-center p-3 bg-danger-50 border border-danger-200 rounded-lg">
-                  <AlertTriangle className="w-4 h-4 text-danger-600 mr-3" />
-                  <span className="text-sm text-danger-800">
-                    Low conversion rate ({metrics.conversionRate.toFixed(1)}%) - consider reviewing sales process
-                  </span>
-                </div>
-              )}
-              {(!metrics?.tasksOverdue || metrics.tasksOverdue === 0) && 
-               (!metrics?.conversionRate || metrics.conversionRate >= 20) && (
-                <div className="flex items-center p-3 bg-success-50 border border-success-200 rounded-lg">
-                  <CheckSquare className="w-4 h-4 text-success-600 mr-3" />
-                  <span className="text-sm text-success-800">
-                    All systems running smoothly!
-                  </span>
-                </div>
-              )}
+              {metrics?.conversionRate &&
+                metrics.conversionRate < 20 && (
+                  <div className='flex items-center p-3 bg-danger-50 border border-danger-200 rounded-lg'>
+                    <AlertTriangle className='w-4 h-4 text-danger-600 mr-3' />
+                    <span className='text-sm text-danger-800'>
+                      Low conversion rate (
+                      {metrics.conversionRate.toFixed(1)}%) - consider
+                      reviewing sales process
+                    </span>
+                  </div>
+                )}
+              {(!metrics?.tasksOverdue || metrics.tasksOverdue === 0) &&
+                (!metrics?.conversionRate ||
+                  metrics.conversionRate >= 20) && (
+                  <div className='flex items-center p-3 bg-success-50 border border-success-200 rounded-lg'>
+                    <CheckSquare className='w-4 h-4 text-success-600 mr-3' />
+                    <span className='text-sm text-success-800'>
+                      All systems running smoothly!
+                    </span>
+                  </div>
+                )}
             </div>
           </div>
         </motion.div>
       </main>
     </div>
   );
-} 
+}
