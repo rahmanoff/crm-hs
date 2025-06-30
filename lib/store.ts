@@ -9,10 +9,15 @@ interface ActivityItem {
   description: string;
 }
 
+interface MetricsTrend {
+  current: DashboardMetrics;
+  previous: DashboardMetrics;
+}
+
 interface CrmState {
   loading: boolean;
   error: string | null;
-  metrics: DashboardMetrics | null;
+  metrics: MetricsTrend | null;
   trends: TrendData[];
   activity: ActivityItem[];
   timeRange: number; // 30, 90, or 0 for 'All Time'
@@ -49,7 +54,7 @@ export const useCrmStore = create<CrmState>((set, get) => ({
         throw new Error('Failed to fetch dashboard data.');
       }
 
-      const metrics = await metricsRes.json();
+      const metrics = await metricsRes.json(); // { current, previous }
       const trends = await trendsRes.json();
       const activity = await activityRes.json();
 

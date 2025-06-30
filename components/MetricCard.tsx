@@ -1,5 +1,10 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
+import {
+  LucideIcon,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+} from 'lucide-react';
 
 interface MetricCardProps {
   title: string;
@@ -9,6 +14,7 @@ interface MetricCardProps {
   icon: LucideIcon;
   color?: 'primary' | 'success' | 'warning' | 'danger';
   format?: 'number' | 'currency' | 'percentage' | 'text';
+  subLabel?: string;
 }
 
 export default function MetricCard({
@@ -19,6 +25,7 @@ export default function MetricCard({
   icon: Icon,
   color = 'primary',
   format = 'text',
+  subLabel,
 }: MetricCardProps) {
   const formatValue = (val: string | number) => {
     switch (format) {
@@ -49,8 +56,22 @@ export default function MetricCard({
   };
 
   const getChangeColor = () => {
-    if (!change) return 'text-gray-500';
+    if (change === undefined || change === 0) return 'text-gray-500';
     return change > 0 ? 'text-success-600' : 'text-danger-600';
+  };
+
+  const renderChange = () => {
+    if (change === undefined) return null;
+    if (change === 0) return null;
+    const Arrow = change > 0 ? ArrowUpRight : ArrowDownRight;
+    return (
+      <span
+        className={`flex items-center text-sm font-medium ${getChangeColor()}`}>
+        <Arrow className='w-4 h-4 mr-1' />
+        {change > 0 ? '+' : ''}
+        {Math.abs(change).toFixed(1)}%
+      </span>
+    );
   };
 
   return (
@@ -68,13 +89,15 @@ export default function MetricCard({
           <p className='text-3xl font-bold text-gray-900'>
             {formatValue(value)}
           </p>
+          {subLabel && (
+            <p className='text-3xl font-bold text-gray-700 mt-1'>
+              {subLabel}
+            </p>
+          )}
         </div>
         {change !== undefined && (
           <div className='flex items-center mt-4'>
-            <span className={`text-sm font-medium ${getChangeColor()}`}>
-              {change > 0 ? '+' : ''}
-              {change}%
-            </span>
+            {renderChange()}
             {changeLabel && (
               <span className='text-sm text-gray-500 ml-1.5'>
                 {changeLabel}

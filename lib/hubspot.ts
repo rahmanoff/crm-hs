@@ -66,6 +66,7 @@ export interface DashboardMetrics {
   totalDeals: number;
   totalTasks: number;
   activeDeals: number;
+  activeDealsValue: number;
   wonDeals: number;
   lostDeals: number;
   totalRevenue: number;
@@ -248,20 +249,30 @@ class HubSpotService {
     return data.results || [];
   }
 
-  async getDashboardMetrics(days = 30): Promise<DashboardMetrics> {
+  async getDashboardMetrics(
+    days = 30,
+    startTimestamp?: number,
+    endTimestamp?: number
+  ): Promise<DashboardMetrics> {
     try {
       const allTime = days === 0;
 
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - days);
+      let startDate: Date, endDate: Date;
+      if (startTimestamp !== undefined && endTimestamp !== undefined) {
+        startDate = new Date(startTimestamp);
+        endDate = new Date(endTimestamp);
+      } else {
+        endDate = new Date();
+        startDate = new Date();
+        startDate.setDate(endDate.getDate() - days);
+      }
 
-      const startTimestamp = new Date(
-        startDate.setHours(0, 0, 0, 0)
-      ).getTime();
-      const endTimestamp = new Date(
-        endDate.setHours(23, 59, 59, 999)
-      ).getTime();
+      const startTs =
+        startTimestamp ??
+        new Date(startDate.setHours(0, 0, 0, 0)).getTime();
+      const endTs =
+        endTimestamp ??
+        new Date(endDate.setHours(23, 59, 59, 999)).getTime();
 
       const createdDateFilter = allTime
         ? []
@@ -271,8 +282,8 @@ class HubSpotService {
                 {
                   propertyName: 'createdate',
                   operator: 'BETWEEN',
-                  value: startTimestamp,
-                  highValue: endTimestamp,
+                  value: startTs,
+                  highValue: endTs,
                 },
               ],
             },
@@ -285,8 +296,8 @@ class HubSpotService {
                 {
                   propertyName: 'hs_timestamp',
                   operator: 'BETWEEN',
-                  value: startTimestamp,
-                  highValue: endTimestamp,
+                  value: startTs,
+                  highValue: endTs,
                 },
               ],
             },
@@ -294,8 +305,8 @@ class HubSpotService {
       const closedDateFilter = {
         propertyName: 'closedate',
         operator: 'BETWEEN',
-        value: startTimestamp,
-        highValue: endTimestamp,
+        value: startTs,
+        highValue: endTs,
       };
 
       const wonDealsFilter = allTime
@@ -326,8 +337,8 @@ class HubSpotService {
       const lastModifiedDateFilter = {
         propertyName: 'hs_lastmodifieddate',
         operator: 'BETWEEN',
-        value: startTimestamp,
-        highValue: endTimestamp,
+        value: startTs,
+        highValue: endTs,
       };
       const lostDealsFilter = allTime
         ? [
@@ -432,12 +443,18 @@ class HubSpotService {
         );
       }).length;
 
+      const activeDealsValue = activeDealsData.results.reduce(
+        (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
+        0
+      );
+
       return {
         totalContacts,
         totalCompanies,
         totalDeals: newDeals,
         totalTasks,
         activeDeals,
+        activeDealsValue,
         wonDeals,
         lostDeals,
         totalRevenue,
@@ -454,6 +471,7 @@ class HubSpotService {
         totalDeals: 0,
         totalTasks: 0,
         activeDeals: 0,
+        activeDealsValue: 0,
         wonDeals: 0,
         lostDeals: 0,
         totalRevenue: 0,

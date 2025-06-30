@@ -63,48 +63,72 @@ export default function Home() {
     ? [
         {
           title: `New Contacts (${timeRangeLabel})`,
-          value: metrics.totalContacts,
+          value: metrics.current.totalContacts,
+          prev: metrics.previous.totalContacts,
           icon: Users,
           key: 'totalContacts',
+          format: 'number',
         },
         {
           title: `New Companies (${timeRangeLabel})`,
-          value: metrics.totalCompanies,
+          value: metrics.current.totalCompanies,
+          prev: metrics.previous.totalCompanies,
           icon: Building2,
           key: 'totalCompanies',
+          format: 'number',
         },
         {
           title: `New Deals (${timeRangeLabel})`,
-          value: metrics.totalDeals,
+          value: metrics.current.totalDeals,
+          prev: metrics.previous.totalDeals,
           icon: Briefcase,
           key: 'totalDeals',
+          format: 'number',
         },
         {
           title: `New Tasks (${timeRangeLabel})`,
-          value: metrics.totalTasks,
+          value: metrics.current.totalTasks,
+          prev: metrics.previous.totalTasks,
           icon: ClipboardCheck,
           key: 'totalTasks',
+          format: 'number',
         },
         {
           title: `Revenue (${timeRangeLabel})`,
-          value: `$${metrics.totalRevenue.toLocaleString()}`,
+          value: metrics.current.totalRevenue,
+          prev: metrics.previous.totalRevenue,
           icon: DollarSign,
           key: 'totalRevenue',
+          format: 'currency',
         },
         {
           title: `Active Deals`,
-          value: metrics.activeDeals,
+          value: metrics.current.activeDeals,
+          prev: metrics.previous.activeDeals,
           icon: LineChartIcon,
           key: 'activeDeals',
+          format: 'number',
+          subLabel: metrics.current.activeDealsValue
+            ? `$${metrics.current.activeDealsValue.toLocaleString()}`
+            : undefined,
         },
         {
           title: `Close Rate (${timeRangeLabel})`,
-          value: `${metrics.conversionRate.toFixed(1)}%`,
+          value: metrics.current.conversionRate,
+          prev: metrics.previous.conversionRate,
           icon: Target,
           key: 'conversionRate',
+          format: 'percentage',
         },
       ]
     : [];
+
+  function getChange(current: number, prev: number | null) {
+    if (prev === null || prev === undefined) return undefined;
+    if (prev === 0 && current === 0) return 0;
+    if (prev === 0 && current > 0) return 100;
+    return ((current - prev) / Math.abs(prev)) * 100;
+  }
 
   if (error) {
     return (
@@ -199,8 +223,15 @@ export default function Home() {
                   }>
                   <MetricCard
                     title={metric.title}
-                    value={metric.value as string}
+                    value={metric.value}
                     icon={metric.icon}
+                    change={
+                      metric.prev !== null && metric.prev !== undefined
+                        ? getChange(metric.value, metric.prev)
+                        : undefined
+                    }
+                    format={metric.format}
+                    subLabel={metric.subLabel}
                   />
                 </motion.div>
               ))}
