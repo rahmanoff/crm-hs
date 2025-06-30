@@ -18,12 +18,14 @@ export default function MetricCard({
   changeLabel,
   icon: Icon,
   color = 'primary',
-  format = 'text'
+  format = 'text',
 }: MetricCardProps) {
   const formatValue = (val: string | number) => {
     switch (format) {
       case 'currency':
-        return typeof val === 'number' ? `$${val.toLocaleString()}` : val;
+        return typeof val === 'number'
+          ? `$${val.toLocaleString()}`
+          : val;
       case 'percentage':
         return typeof val === 'number' ? `${val.toFixed(1)}%` : val;
       case 'number':
@@ -52,30 +54,34 @@ export default function MetricCard({
   };
 
   return (
-    <div className="metric-card">
-      <div className="flex items-center justify-between">
+    <div className='metric-card'>
+      <div className='flex items-center justify-between'>
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
+          <p className='text-sm font-medium text-gray-600'>{title}</p>
+          <p className='text-2xl font-bold text-gray-900 mt-1'>
             {formatValue(value)}
           </p>
           {change !== undefined && (
-            <div className="flex items-center mt-2">
-              <span className={`text-sm font-medium ${getChangeColor()}`}>
-                {change > 0 ? '+' : ''}{change}%
+            <div className='flex items-center mt-2'>
+              <span
+                className={`text-sm font-medium ${getChangeColor()}`}>
+                {change > 0 ? '+' : ''}
+                {change}%
               </span>
               {changeLabel && (
-                <span className="text-sm text-gray-500 ml-1">
+                <span className='text-sm text-gray-500 ml-1'>
                   {changeLabel}
                 </span>
               )}
             </div>
           )}
         </div>
-        <div className={`p-3 rounded-lg ${getColorClasses()}`}>
-          <Icon className="w-6 h-6" />
+        <div
+          className={`p-3 rounded-lg ${getColorClasses()}`}
+          data-testid='metric-icon'>
+          <Icon className='w-6 h-6' />
         </div>
       </div>
     </div>
   );
-} 
+}

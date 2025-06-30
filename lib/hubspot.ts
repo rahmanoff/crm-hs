@@ -94,7 +94,7 @@ class HubSpotService {
     this.baseUrl = HUBSPOT_API_BASE;
 
     if (!this.apiKey) {
-      console.warn(
+      throw new Error(
         'HubSpot API key not found. Please set HUBSPOT_API_KEY environment variable.'
       );
     }

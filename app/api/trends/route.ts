@@ -2,6 +2,13 @@ import { NextResponse, NextRequest } from 'next/server';
 import { hubSpotService } from '@/lib/hubspot';
 
 export async function GET(request: NextRequest) {
+  if (!process.env.HUBSPOT_API_KEY) {
+    return NextResponse.json(
+      { error: 'HubSpot API key not configured.' },
+      { status: 500 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from');

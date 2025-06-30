@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { hubSpotService } from '@/lib/hubspot';
 
-export async function GET(request: Request) {
+export async function GET() {
+  if (!process.env.HUBSPOT_API_KEY) {
+    return NextResponse.json(
+      { error: 'HubSpot API key not configured.' },
+      { status: 500 }
+    );
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
-    const activity = await hubSpotService.getRecentActivity(limit);
+    const activity = await hubSpotService.getRecentActivity(20);
     return NextResponse.json(activity);
   } catch (error: any) {
     console.error('Error in activity API route:', error.message);

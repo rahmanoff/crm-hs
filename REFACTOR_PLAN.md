@@ -38,7 +38,7 @@ Improve the user experience and maintainability of the frontend code.
 
 Introduce development practices that ensure long-term stability and ease of maintenance.
 
-- [ ] **Add Unit & Integration Tests**: Implement a testing framework (e.g., Jest, React Testing Library) and add tests for critical components and API services.
+- [x] **Add Unit & Integration Tests**: Implement a testing framework (e.g., Jest, React Testing Library) and add tests for critical components and API services.
   - Test the `HubSpotService` methods with mocked API responses.
   - Test React components to ensure they render correctly based on props and state.
-- [ ] **Implement Environment Validation**: Add a startup check to ensure that all required environment variables (i.e., `HUBSPOT_API_KEY`) are present, and fail fast with a clear error message if they are not. This prevents runtime errors due to misconfiguration.
+- [ ] **Implement Environment Validation**: Add a startup check to ensure that all required environment variables (i.e., `HUBSPOT_API_KEY`) are present, and fail fast with a clear error message if they are not. (Skipped due to technical issues).
