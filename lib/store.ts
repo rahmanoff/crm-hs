@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import { DateRange } from 'react-day-picker';
-import { subDays } from 'date-fns';
 
 interface CrmState {
   loading: boolean;
@@ -8,32 +6,21 @@ interface CrmState {
   metrics: any;
   trends: any;
   activity: any[];
-  dateRange: DateRange;
-  setDateRange: (dateRange: DateRange) => void;
-  fetchData: (dateRange: DateRange) => Promise<void>;
+  fetchData: () => Promise<void>;
 }
 
-export const useCrmStore = create<CrmState>((set, get) => ({
+export const useCrmStore = create<CrmState>((set) => ({
   loading: true,
   error: null,
   metrics: {},
   trends: {},
   activity: [],
-  dateRange: {
-    from: subDays(new Date(), 29),
-    to: new Date(),
-  },
-  setDateRange: (dateRange: DateRange) => set({ dateRange }),
-  fetchData: async (dateRange: DateRange) => {
+  fetchData: async () => {
     set({ loading: true, error: null });
     try {
-      const { from, to } = dateRange;
-      const fromISO = from?.toISOString();
-      const toISO = to?.toISOString();
-
       const [metricsRes, trendsRes, activityRes] = await Promise.all([
-        fetch(`/api/metrics?from=${fromISO}&to=${toISO}`),
-        fetch(`/api/trends?from=${fromISO}&to=${toISO}`),
+        fetch('/api/metrics'),
+        fetch('/api/trends?days=30'),
         fetch('/api/activity'),
       ]);
 

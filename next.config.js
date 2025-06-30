@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
@@ -38,4 +35,4 @@ const nextConfig = {
   swcMinify: true,
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;

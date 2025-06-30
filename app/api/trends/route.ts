@@ -2,23 +2,11 @@ import { NextResponse, NextRequest } from 'next/server';
 import { hubSpotService } from '@/lib/hubspot';
 
 export async function GET(request: NextRequest) {
-  if (!process.env.HUBSPOT_API_KEY) {
-    return NextResponse.json(
-      { error: 'HubSpot API key not configured.' },
-      { status: 500 }
-    );
-  }
-
   try {
     const { searchParams } = new URL(request.url);
-    const from = searchParams.get('from');
-    const to = searchParams.get('to');
-
-    const trendData = await hubSpotService.getTrendData({
-      from: from || undefined,
-      to: to || undefined,
-    });
-    return NextResponse.json(trendData);
+    const days = parseInt(searchParams.get('days') || '30', 10);
+    const trends = await hubSpotService.getTrendData(days);
+    return NextResponse.json(trends);
   } catch (error: any) {
     console.error('Error in trends API route:', error.message);
 
