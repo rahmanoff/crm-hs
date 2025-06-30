@@ -42,3 +42,22 @@ Introduce development practices that ensure long-term stability and ease of main
   - Test the `HubSpotService` methods with mocked API responses.
   - Test React components to ensure they render correctly based on props and state.
 - [ ] **Implement Environment Validation**: Add a startup check to ensure that all required environment variables (i.e., `HUBSPOT_API_KEY`) are present, and fail fast with a clear error message if they are not. (Skipped due to technical issues).
+
+---
+
+### Phase 5: Advanced Performance Optimization
+
+Building on the initial scalability improvements in Phase 2, this phase will focus on hyper-optimizing data fetching logic in `lib/hubspot.ts` to minimize API calls, reduce memory usage, and improve overall dashboard loading speed.
+
+- [ ] **Refactor `getDashboardMetrics` for Efficiency**:
+
+  - Deprecate and remove the `countAllDeals` method.
+  - Leverage `Promise.all` to run data-fetching operations concurrently instead of sequentially.
+  - Replace broad data fetches (e.g., `getDeals(0)`) with targeted `searchObjects` queries. Use filters to have HubSpot perform aggregations for metrics like active, won, and lost deals, and total revenue.
+
+- [ ] **Refactor `getTrendData` for Performance**:
+
+  - Modify the function to use `searchObjects` with date range filters. This will offload the filtering from the application to the HubSpot API, resulting in smaller payloads and faster processing.
+
+- [ ] **Review and Optimize API Route Handlers**:
+  - After refactoring `HubSpotService`, audit the API routes (`app/api/metrics/route.ts`, etc.) to ensure they correctly utilize the new, more efficient service methods.

@@ -1,25 +1,18 @@
-import { NextResponse } from 'next/server';
 import { hubSpotService } from '@/lib/hubspot';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function GET() {
-  if (!process.env.HUBSPOT_API_KEY) {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+  try {
+    const activity = await hubSpotService.getRecentActivity();
+    return NextResponse.json(activity);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred';
     return NextResponse.json(
-      { error: 'HubSpot API key not configured.' },
+      { error: 'Failed to fetch recent activity', details: errorMessage },
       { status: 500 }
     );
-  }
-
-  try {
-    const activity = await hubSpotService.getRecentActivity(20);
-    return NextResponse.json(activity);
-  } catch (error: any) {
-    console.error('Error in activity API route:', error.message);
-
-    const status = error.response?.status || 500;
-    const message =
-      error.response?.data?.message ||
-      'An internal error occurred while fetching recent activity.';
-
-    return NextResponse.json({ error: message }, { status });
   }
 }

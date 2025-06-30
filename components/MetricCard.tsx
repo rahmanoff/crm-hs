@@ -54,33 +54,34 @@ export default function MetricCard({
   };
 
   return (
-    <div className='metric-card'>
-      <div className='flex items-center justify-between'>
+    <div className='card h-full'>
+      <div className='flex flex-col justify-between h-full'>
         <div>
-          <p className='text-sm font-medium text-gray-600'>{title}</p>
-          <p className='text-2xl font-bold text-gray-900 mt-1'>
+          <div className='flex items-center justify-between mb-2'>
+            <p className='text-sm font-medium text-gray-600'>{title}</p>
+            <div
+              className={`p-2 rounded-lg ${getColorClasses()}`}
+              data-testid='metric-icon'>
+              <Icon className='w-5 h-5' />
+            </div>
+          </div>
+          <p className='text-3xl font-bold text-gray-900'>
             {formatValue(value)}
           </p>
-          {change !== undefined && (
-            <div className='flex items-center mt-2'>
-              <span
-                className={`text-sm font-medium ${getChangeColor()}`}>
-                {change > 0 ? '+' : ''}
-                {change}%
+        </div>
+        {change !== undefined && (
+          <div className='flex items-center mt-4'>
+            <span className={`text-sm font-medium ${getChangeColor()}`}>
+              {change > 0 ? '+' : ''}
+              {change}%
+            </span>
+            {changeLabel && (
+              <span className='text-sm text-gray-500 ml-1.5'>
+                {changeLabel}
               </span>
-              {changeLabel && (
-                <span className='text-sm text-gray-500 ml-1'>
-                  {changeLabel}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-        <div
-          className={`p-3 rounded-lg ${getColorClasses()}`}
-          data-testid='metric-icon'>
-          <Icon className='w-6 h-6' />
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

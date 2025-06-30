@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
@@ -12,74 +12,99 @@ import {
   AlertTriangle,
   RefreshCw,
   Settings,
+  Briefcase,
+  ClipboardCheck,
+  Target,
+  LineChart as LineChartIcon,
 } from 'lucide-react';
 
 import MetricCard from '@/components/MetricCard';
 import TrendChart from '@/components/TrendChart';
 import ActivityFeed from '@/components/ActivityFeed';
 import { useCrmStore } from '@/lib/store';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
 
-interface DashboardMetrics {
-  totalContacts: number;
-  totalCompanies: number;
-  totalDeals: number;
-  totalTasks: number;
-  activeDeals: number;
-  wonDeals: number;
-  lostDeals: number;
-  totalRevenue: number;
-  averageDealSize: number;
-  conversionRate: number;
-  tasksCompleted: number;
-  tasksOverdue: number;
-}
+import MetricCardSkeleton from '@/components/MetricCardSkeleton';
+import ChartSkeleton from '@/components/ChartSkeleton';
+import ActivityFeedSkeleton from '@/components/ActivityFeedSkeleton';
 
-interface TrendData {
-  date: string;
-  contacts: number;
-  companies: number;
-  deals: number;
-  revenue: number;
-}
-
-export default function Dashboard() {
+export default function Home() {
   const {
     metrics,
-    trends: trendData,
-    activity: activities,
+    trends,
+    activity,
     loading,
     error,
     fetchData,
+    timeRange,
   } = useCrmStore();
-
-  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const handleRefresh = async () => {
-    setRefreshing(true);
     try {
       await fetchData();
       toast.success('Data refreshed successfully!');
-    } catch (error) {
+    } catch (err) {
       toast.error('Failed to refresh data.');
-    } finally {
-      setRefreshing(false);
     }
   };
 
-  if (loading && !metrics) {
-    return (
-      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
-        <div className='text-center'>
-          <RefreshCw className='w-8 h-8 animate-spin mx-auto mb-4 text-primary-600' />
-          <p className='text-gray-600'>Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const timeRangeLabel =
+    timeRange === 30
+      ? 'Last 30d'
+      : timeRange === 90
+      ? 'Last 90d'
+      : 'All Time';
+
+  const metricCards = metrics
+    ? [
+        {
+          title: `New Contacts (${timeRangeLabel})`,
+          value: metrics.totalContacts,
+          icon: Users,
+          key: 'totalContacts',
+        },
+        {
+          title: `New Companies (${timeRangeLabel})`,
+          value: metrics.totalCompanies,
+          icon: Building2,
+          key: 'totalCompanies',
+        },
+        {
+          title: `New Deals (${timeRangeLabel})`,
+          value: metrics.totalDeals,
+          icon: Briefcase,
+          key: 'totalDeals',
+        },
+        {
+          title: `New Tasks (${timeRangeLabel})`,
+          value: metrics.totalTasks,
+          icon: ClipboardCheck,
+          key: 'totalTasks',
+        },
+        {
+          title: `Revenue (${timeRangeLabel})`,
+          value: `$${metrics.totalRevenue.toLocaleString()}`,
+          icon: DollarSign,
+          key: 'totalRevenue',
+        },
+        {
+          title: `Active Deals`,
+          value: metrics.activeDeals,
+          icon: LineChartIcon,
+          key: 'activeDeals',
+        },
+        {
+          title: `Close Rate (${timeRangeLabel})`,
+          value: `${metrics.conversionRate.toFixed(1)}%`,
+          icon: Target,
+          key: 'conversionRate',
+        },
+      ]
+    : [];
 
   if (error) {
     return (
@@ -90,18 +115,12 @@ export default function Dashboard() {
             Dashboard Error
           </h2>
           <p className='text-gray-600 mb-6'>{error}</p>
-          <p className='text-sm text-gray-500 mb-6'>
-            This is often caused by an invalid or missing HubSpot API
-            key. Please check your
-            <code>.env.local</code> file and ensure the{' '}
-            <code>HUBSPOT_API_KEY</code> is correct.
-          </p>
           <button
             onClick={handleRefresh}
-            disabled={refreshing}
+            disabled={loading}
             className='btn-primary flex items-center space-x-2 mx-auto'>
             <RefreshCw
-              className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
             />
             <span>Try Again</span>
           </button>
@@ -110,188 +129,138 @@ export default function Dashboard() {
     );
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+    },
+  };
+
   return (
     <div className='min-h-screen bg-gray-50'>
-      {/* Header */}
       <header className='bg-white shadow-sm border-b border-gray-200'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
           <div className='flex justify-between items-center py-4'>
             <div>
               <h1 className='text-2xl font-bold text-gray-900'>
-                HubSpot CRM Dashboard
+                CRM Dashboard
               </h1>
               <p className='text-gray-600'>
-                Monitor your business metrics and trends
+                Your business metrics and trends at a glance
               </p>
             </div>
             <div className='flex items-center space-x-4'>
+              <TimeRangeSelector />
               <button
                 onClick={handleRefresh}
-                disabled={refreshing}
+                disabled={loading}
                 className='btn-secondary flex items-center space-x-2'>
                 <RefreshCw
-                  className={`w-4 h-4 ${
-                    refreshing ? 'animate-spin' : ''
-                  }`}
+                  className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
                 />
                 <span>Refresh</span>
-              </button>
-              <button className='btn-secondary flex items-center space-x-2'>
-                <Settings className='w-4 h-4' />
-                <span>Settings</span>
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
-        {/* Metrics Grid */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8'>
-          <MetricCard
-            title='Total Contacts'
-            value={metrics?.totalContacts || 0}
-            icon={Users}
-            color='primary'
-            format='number'
-          />
-          <MetricCard
-            title='Total Companies'
-            value={metrics?.totalCompanies || 0}
-            icon={Building2}
-            color='success'
-            format='number'
-          />
-          <MetricCard
-            title='Active Deals'
-            value={metrics?.activeDeals || 0}
-            icon={DollarSign}
-            color='warning'
-            format='number'
-          />
-          <MetricCard
-            title='Total Tasks'
-            value={metrics?.totalTasks || 0}
-            icon={CheckSquare}
-            color='primary'
-            format='number'
-          />
+          variants={containerVariants}
+          initial='hidden'
+          animate='visible'
+          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8'>
+          {loading
+            ? Array.from({ length: 6 }).map((_, index) => (
+                <MetricCardSkeleton key={index} />
+              ))
+            : metricCards.map((metric) => (
+                <motion.div
+                  key={metric.key}
+                  variants={itemVariants}
+                  className={
+                    ['totalRevenue', 'conversionRate'].includes(
+                      metric.key
+                    )
+                      ? 'xl:col-span-3'
+                      : 'xl:col-span-2'
+                  }>
+                  <MetricCard
+                    title={metric.title}
+                    value={metric.value as string}
+                    icon={metric.icon}
+                  />
+                </motion.div>
+              ))}
         </motion.div>
 
-        {/* Revenue and Conversion Metrics */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className='grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'>
-          <MetricCard
-            title='Total Revenue'
-            value={metrics?.totalRevenue || 0}
-            icon={TrendingUp}
-            color='success'
-            format='currency'
-          />
-          <MetricCard
-            title='Average Deal Size'
-            value={metrics?.averageDealSize || 0}
-            icon={DollarSign}
-            color='primary'
-            format='currency'
-          />
-          <MetricCard
-            title='Conversion Rate'
-            value={metrics?.conversionRate || 0}
-            icon={TrendingUp}
-            color='success'
-            format='percentage'
-          />
-        </motion.div>
-
-        {/* Charts and Activity */}
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
-          {/* Trend Charts */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            variants={containerVariants}
+            initial='hidden'
+            animate='visible'
             className='lg:col-span-2 space-y-6'>
-            <TrendChart
-              data={trendData || []}
-              title='Business Growth Trends (Last 30 Days)'
-              type='area'
-              dataKeys={['contacts', 'companies', 'deals']}
-              colors={['#3b82f6', '#10b981', '#f59e0b']}
-            />
-            <TrendChart
-              data={trendData || []}
-              title='Revenue Trends'
-              type='line'
-              dataKeys={['revenue']}
-              colors={['#8b5cf6']}
-            />
+            {timeRange === 0 ? (
+              <div className='h-full flex items-center justify-center md:col-span-2 lg:col-span-2 p-6 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-center text-gray-500 dark:text-gray-400'>
+                <div>
+                  <p>
+                    Trend data is not available for the "All Time" view.
+                  </p>
+                  <p className='text-sm'>
+                    Please select a 30 or 90-day range to see trends.
+                  </p>
+                </div>
+              </div>
+            ) : loading ? (
+              <>
+                <ChartSkeleton />
+                <ChartSkeleton />
+              </>
+            ) : (
+              <>
+                <motion.div variants={itemVariants}>
+                  <TrendChart
+                    title={`Business Growth Trends (${timeRangeLabel})`}
+                    data={trends}
+                    type='area'
+                    dataKeys={['contacts', 'companies', 'deals']}
+                  />
+                </motion.div>
+                <motion.div variants={itemVariants}>
+                  <TrendChart
+                    title={`Revenue Trends (${timeRangeLabel})`}
+                    data={trends}
+                    type='line'
+                    dataKeys={['revenue']}
+                  />
+                </motion.div>
+              </>
+            )}
           </motion.div>
 
-          {/* Activity Feed */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}>
-            <ActivityFeed activities={activities || []} />
+            variants={itemVariants}
+            initial='hidden'
+            animate='visible'>
+            {loading ? (
+              <ActivityFeedSkeleton />
+            ) : (
+              <ActivityFeed activities={activity} />
+            )}
           </motion.div>
         </div>
-
-        {/* Alerts Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className='mt-8'>
-          <div className='card'>
-            <div className='flex items-center space-x-2 mb-4'>
-              <AlertTriangle className='w-5 h-5 text-warning-600' />
-              <h3 className='text-lg font-semibold text-gray-900'>
-                Alerts & Notifications
-              </h3>
-            </div>
-            <div className='space-y-3'>
-              {metrics?.tasksOverdue && metrics.tasksOverdue > 0 && (
-                <div className='flex items-center p-3 bg-warning-50 border border-warning-200 rounded-lg'>
-                  <AlertTriangle className='w-4 h-4 text-warning-600 mr-3' />
-                  <span className='text-sm text-warning-800'>
-                    {metrics.tasksOverdue} overdue tasks require
-                    attention
-                  </span>
-                </div>
-              )}
-              {metrics?.conversionRate &&
-                metrics.conversionRate < 20 && (
-                  <div className='flex items-center p-3 bg-danger-50 border border-danger-200 rounded-lg'>
-                    <AlertTriangle className='w-4 h-4 text-danger-600 mr-3' />
-                    <span className='text-sm text-danger-800'>
-                      Low conversion rate (
-                      {metrics.conversionRate.toFixed(1)}%) - consider
-                      reviewing sales process
-                    </span>
-                  </div>
-                )}
-              {(!metrics?.tasksOverdue || metrics.tasksOverdue === 0) &&
-                (!metrics?.conversionRate ||
-                  metrics.conversionRate >= 20) && (
-                  <div className='flex items-center p-3 bg-success-50 border border-success-200 rounded-lg'>
-                    <CheckSquare className='w-4 h-4 text-success-600 mr-3' />
-                    <span className='text-sm text-success-800'>
-                      All systems running smoothly!
-                    </span>
-                  </div>
-                )}
-            </div>
-          </div>
-        </motion.div>
       </main>
     </div>
   );
