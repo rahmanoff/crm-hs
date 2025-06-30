@@ -17,6 +17,7 @@ import {
   Target,
   LineChart as LineChartIcon,
 } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 
 import MetricCard from '@/components/MetricCard';
 import TrendChart from '@/components/TrendChart';
@@ -27,6 +28,16 @@ import { TimeRangeSelector } from '@/components/TimeRangeSelector';
 import MetricCardSkeleton from '@/components/MetricCardSkeleton';
 import ChartSkeleton from '@/components/ChartSkeleton';
 import ActivityFeedSkeleton from '@/components/ActivityFeedSkeleton';
+
+type MetricCardConfig = {
+  title: string;
+  value: number;
+  prev: number | null | undefined;
+  icon: LucideIcon;
+  key: string;
+  format?: 'number' | 'currency' | 'percentage' | 'text';
+  subLabel?: string;
+};
 
 export default function Home() {
   const {
@@ -59,7 +70,7 @@ export default function Home() {
       ? 'Last 90d'
       : 'All Time';
 
-  const metricCards = metrics
+  const metricCards: MetricCardConfig[] = metrics
     ? [
         {
           title: `New Contacts (${timeRangeLabel})`,

@@ -90,7 +90,7 @@ export default function MetricCard({
             {formatValue(value)}
           </p>
           {subLabel && (
-            <p className='text-3xl font-bold text-gray-700 mt-1'>
+            <p className='text-3xl font-bold text-gray-700 mt-6'>
               {subLabel}
             </p>
           )}
