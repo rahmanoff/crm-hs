@@ -1,12 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { hubSpotService } from '@/lib/hubspot';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days') || '30', 10);
-    const trends = await hubSpotService.getTrendData(days);
-    return NextResponse.json(trends);
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+
+    const trendData = await hubSpotService.getTrendData({
+      from: from || undefined,
+      to: to || undefined,
+    });
+    return NextResponse.json(trendData);
   } catch (error: any) {
     console.error('Error in trends API route:', error.message);
 

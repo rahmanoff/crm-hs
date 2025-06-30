@@ -18,6 +18,7 @@ import MetricCard from '@/components/MetricCard';
 import TrendChart from '@/components/TrendChart';
 import ActivityFeed from '@/components/ActivityFeed';
 import { useCrmStore } from '@/lib/store';
+import { DatePicker } from '@/components/DatePicker';
 
 interface DashboardMetrics {
   totalContacts: number;
@@ -50,20 +51,21 @@ export default function Dashboard() {
     loading,
     error,
     fetchData,
+    dateRange,
   } = useCrmStore();
 
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!metrics) {
-      fetchData();
+      fetchData(dateRange);
     }
-  }, [fetchData, metrics]);
+  }, [fetchData, metrics, dateRange]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await fetchData();
+      await fetchData(dateRange);
       toast.success('Data refreshed successfully!');
     } catch (error) {
       toast.error('Failed to refresh data.');
@@ -127,6 +129,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className='flex items-center space-x-4'>
+              <DatePicker />
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}

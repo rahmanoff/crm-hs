@@ -10,7 +10,7 @@ The priority is to make the application robust and prevent silent failures.
 
 - [x] **Standardize API Error Handling for `metrics` route**: Refactor `app/api/metrics/route.ts` to propagate specific errors from the HubSpot API instead of returning default data.
 - [x] **Implement Frontend Error UI**: Update `app/page.tsx` to handle backend errors gracefully, showing a dedicated error screen to the user instead of a dashboard with zeroed-out metrics.
-- [ ] **Standardize API Error Handling for `trends` and `activity` routes**: Apply the same error handling pattern to `app/api/trends/route.ts` and `app/api/activity/route.ts` to ensure all endpoints are consistent.
+- [x] **Standardize API Error Handling for `trends` and `activity` routes**: Apply the same error handling pattern to `app/api/trends/route.ts` and `app/api/activity/route.ts` to ensure all endpoints are consistent.
 
 ---
 
@@ -18,11 +18,10 @@ The priority is to make the application robust and prevent silent failures.
 
 Address the core performance bottlenecks to ensure the application works for HubSpot accounts of all sizes.
 
-- [ ] **Remove Hardcoded Pagination Limits**: In `lib/hubspot.ts`, remove the arbitrary `pageCount` safety limits in `getContacts`, `getCompanies`, `getDeals`, etc., to allow full data fetching.
-- [ ] **Implement Robust Rate Limiting**: Replace the basic `setTimeout` delay with a proper exponential backoff strategy for retrying `429` rate-limited requests. Consider using a library like `axios-retry`.
-- [ ] **Optimize Data Aggregation**: This is the most significant scalability improvement.
-  - **Short-term**: Investigate using HubSpot's [Reporting & Analytics APIs](https://developers.hubspot.com/docs/api/crm/reports) to perform calculations on their servers.
-  - **Long-term**: If reporting APIs are insufficient, design a simple background job architecture. A separate process could periodically sync and aggregate HubSpot data into a local, optimized data store (e.g., a simple database) that the dashboard can query instantly.
+- [x] **Remove Hardcoded Pagination Limits**: In `lib/hubspot.ts`, remove the arbitrary `pageCount` safety limits in `getContacts`, `getCompanies`, `getDeals`, etc., to allow full data fetching.
+- [x] **Implement Robust Rate Limiting**: Replace the basic `setTimeout` delay with a proper exponential backoff strategy for retrying `429` rate-limited requests.
+- [x] **Optimize Data Aggregation**: This is the most significant scalability improvement.
+  - **Done**: Investigated and implemented HubSpot's [Search API](https://developers.hubspot.com/docs/api/crm/search) to perform calculations on their servers, which dramatically reduces the amount of data we need to transfer and process.
 
 ---
 
@@ -30,8 +29,8 @@ Address the core performance bottlenecks to ensure the application works for Hub
 
 Improve the user experience and maintainability of the frontend code.
 
-- [ ] **Introduce a Global State Manager**: For better state management as complexity grows, integrate a lightweight library like Zustand. This will help manage global state like the current user, dashboard filters, and API loading/error states.
-- [ ] **Add Dashboard Controls**: Implement user controls, such as a date range picker, to allow users to filter the dashboard data (e.g., "Last 30 Days," "This Quarter").
+- [x] **Introduce a Global State Manager**: For better state management as complexity grows, integrate a lightweight library like Zustand. This will help manage global state like the current user, dashboard filters, and API loading/error states.
+- [x] **Add Dashboard Controls**: Implement user controls, such as a date range picker, to allow users to filter the dashboard data (e.g., "Last 30 Days," "This Quarter").
 
 ---
 

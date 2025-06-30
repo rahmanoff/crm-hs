@@ -308,46 +308,79 @@ class HubSpotService {
     return allTasks;
   }
 
-  async getDashboardMetrics(): Promise<DashboardMetrics> {
-    const wonDealsFilter = [
+  async getDashboardMetrics({
+    from,
+    to,
+  }: {
+    from?: string;
+    to?: string;
+  } = {}): Promise<DashboardMetrics> {
+    const dateFilter = (propertyName: string) => {
+      const filters = [];
+      if (from) {
+        filters.push({
+          propertyName,
+          operator: 'GTE',
+          value: new Date(from).getTime(),
+        });
+      }
+      if (to) {
+        filters.push({
+          propertyName,
+          operator: 'LTE',
+          value: new Date(to).getTime(),
+        });
+      }
+      return filters;
+    };
+
+    const contactFilters = dateFilter('createdate');
+    const dealFilters = dateFilter('createdate');
+
+    const totalContactsPromise = this.searchObjects(
+      'contacts',
+      contactFilters.length > 0 ? [{ filters: contactFilters }] : []
+    );
+    const totalCompaniesPromise = this.searchObjects('companies', []);
+    const totalDealsPromise = this.searchObjects(
+      'deals',
+      dealFilters.length > 0 ? [{ filters: dealFilters }] : []
+    );
+
+    const wonDealsFilterGroup = {
+      filters: [
+        {
+          propertyName: 'hs_is_closed_won',
+          operator: 'EQ',
+          value: 'true',
+        },
+        ...dateFilter('closedate'),
+      ],
+    };
+
+    const wonDealsPromise = this.searchObjects('deals', [
+      wonDealsFilterGroup,
+    ]);
+    const totalRevenuePromise = this.searchObjects(
+      'deals',
+      [wonDealsFilterGroup],
+      ['amount']
+    );
+
+    const lostDealsPromise = this.searchObjects('deals', [
       {
         filters: [
           {
-            propertyName: 'dealstage',
+            propertyName: 'hs_is_closed_lost',
             operator: 'EQ',
-            value: 'closedwon',
+            value: 'true',
           },
+          ...dateFilter('closedate'),
         ],
       },
-    ];
-    const lostDealsFilter = [
-      {
-        filters: [
-          {
-            propertyName: 'dealstage',
-            operator: 'EQ',
-            value: 'closedlost',
-          },
-        ],
-      },
-    ];
-    const activeDealsFilter = [
-      {
-        filters: [
-          {
-            propertyName: 'dealstage',
-            operator: 'NEQ',
-            value: 'closedwon',
-          },
-          {
-            propertyName: 'dealstage',
-            operator: 'NEQ',
-            value: 'closedlost',
-          },
-        ],
-      },
-    ];
-    const tasksCompletedFilter = [
+    ]);
+
+    const tasksCompletedPromise = this.searchObjects('tasks', [
       {
         filters: [
           {
@@ -357,8 +390,9 @@ class HubSpotService {
           },
         ],
       },
-    ];
-    const tasksOverdueFilter = [
+    ]);
+
+    const tasksOverduePromise = this.searchObjects('tasks', [
       {
         filters: [
           {
@@ -368,53 +402,50 @@ class HubSpotService {
           },
         ],
       },
-    ];
-
-    const [
-      contactsData,
-      companiesData,
-      wonDealsData,
-      lostDealsData,
-      activeDealsData,
-      tasksCompletedData,
-      tasksOverdueData,
-      allDealsForRevenue,
-    ] = await Promise.all([
-      this.searchObjects('contacts', []),
-      this.searchObjects('companies', []),
-      this.searchObjects('deals', wonDealsFilter),
-      this.searchObjects('deals', lostDealsFilter),
-      this.searchObjects('deals', activeDealsFilter),
-      this.searchObjects('tasks', tasksCompletedFilter),
-      this.searchObjects('tasks', tasksOverdueFilter),
-      this.getDeals(0),
     ]);
 
-    const totalDeals =
-      wonDealsData.total + lostDealsData.total + activeDealsData.total;
-    const totalRevenue = allDealsForRevenue
-      .filter((d) => d.properties.hs_is_closed_won === 'true')
-      .reduce(
-        (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
-        0
-      );
+    const [
+      totalContactsData,
+      totalCompaniesData,
+      totalDealsData,
+      wonDealsData,
+      lostDealsData,
+      tasksCompletedData,
+      tasksOverdueData,
+      totalRevenueData,
+    ] = await Promise.all([
+      totalContactsPromise,
+      totalCompaniesPromise,
+      totalDealsPromise,
+      wonDealsPromise,
+      lostDealsPromise,
+      tasksCompletedPromise,
+      tasksOverduePromise,
+      totalRevenuePromise,
+    ]);
 
-    const averageDealSize =
-      wonDealsData.total > 0 ? totalRevenue / wonDealsData.total : 0;
-    const conversionRate =
-      totalDeals > 0 ? (wonDealsData.total / totalDeals) * 100 : 0;
+    const totalRevenue = totalRevenueData.results.reduce(
+      (sum: number, deal: any) =>
+        sum + parseFloat(deal.properties.amount || '0'),
+      0
+    );
 
     const metrics: DashboardMetrics = {
-      totalContacts: contactsData.total,
-      totalCompanies: companiesData.total,
-      totalDeals: totalDeals,
+      totalContacts: totalContactsData.total,
+      totalCompanies: totalCompaniesData.total,
+      totalDeals: totalDealsData.total,
+      totalTasks: tasksCompletedData.total + tasksOverdueData.total,
+      activeDeals:
+        totalDealsData.total - wonDealsData.total - lostDealsData.total,
       wonDeals: wonDealsData.total,
       lostDeals: lostDealsData.total,
-      activeDeals: activeDealsData.total,
       totalRevenue: totalRevenue,
-      averageDealSize: averageDealSize,
-      conversionRate: conversionRate,
-      totalTasks: tasksCompletedData.total + tasksOverdueData.total,
+      averageDealSize:
+        wonDealsData.total > 0 ? totalRevenue / wonDealsData.total : 0,
+      conversionRate:
+        totalDealsData.total > 0
+          ? (wonDealsData.total / totalDealsData.total) * 100
+          : 0,
       tasksCompleted: tasksCompletedData.total,
       tasksOverdue: tasksOverdueData.total,
     };
@@ -422,85 +453,118 @@ class HubSpotService {
     return metrics;
   }
 
-  async getTrendData(days = 30): Promise<TrendData[]> {
+  async getTrendData({
+    from,
+    to,
+  }: {
+    from?: string;
+    to?: string;
+  } = {}): Promise<TrendData[]> {
+    const startDate = from
+      ? new Date(from)
+      : new Date(new Date().setDate(new Date().getDate() - 30));
+    const endDate = to ? new Date(to) : new Date();
+
     const trendData: TrendData[] = [];
-    const dateArray = Array.from({ length: days }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return d.toISOString().split('T')[0];
-    }).reverse();
+    const dateChunks: { start: Date; end: Date }[] = [];
 
-    for (const date of dateArray) {
-      const gte = new Date(`${date}T00:00:00.000Z`)
-        .getTime()
-        .toString();
-      const lte = new Date(`${date}T23:59:59.999Z`)
-        .getTime()
-        .toString();
+    let current = new Date(startDate);
 
-      const contactsFilter = [
+    while (current <= endDate) {
+      const next = new Date(current);
+      next.setDate(next.getDate() + 1);
+      dateChunks.push({
+        start: new Date(current),
+        end: new Date(next.setMilliseconds(next.getMilliseconds() - 1)),
+      });
+      current.setDate(current.getDate() + 1);
+    }
+
+    for (const chunk of dateChunks) {
+      const from_timestamp = chunk.start.getTime();
+      const to_timestamp = chunk.end.getTime();
+
+      const contactsPromise = this.searchObjects('contacts', [
         {
           filters: [
             {
               propertyName: 'createdate',
               operator: 'BETWEEN',
-              value: gte,
-              highValue: lte,
+              value: from_timestamp,
+              highValue: to_timestamp,
             },
           ],
         },
-      ];
-      const companiesFilter = [
+      ]);
+      const companiesPromise = this.searchObjects('companies', [
         {
           filters: [
             {
               propertyName: 'createdate',
               operator: 'BETWEEN',
-              value: gte,
-              highValue: lte,
+              value: from_timestamp,
+              highValue: to_timestamp,
             },
           ],
         },
-      ];
-      const dealsFilter = [
+      ]);
+      const dealsPromise = this.searchObjects('deals', [
         {
           filters: [
             {
               propertyName: 'createdate',
               operator: 'BETWEEN',
-              value: gte,
-              highValue: lte,
+              value: from_timestamp,
+              highValue: to_timestamp,
             },
           ],
         },
-      ];
+      ]);
+      const revenuePromise = this.searchObjects(
+        'deals',
+        [
+          {
+            filters: [
+              {
+                propertyName: 'hs_is_closed_won',
+                operator: 'EQ',
+                value: 'true',
+              },
+              {
+                propertyName: 'closedate',
+                operator: 'BETWEEN',
+                value: from_timestamp,
+                highValue: to_timestamp,
+              },
+            ],
+          },
+        ],
+        ['amount']
+      );
 
-      const [contactsData, companiesData, dealsData] =
+      const [contacts, companies, deals, revenueResult] =
         await Promise.all([
-          this.searchObjects('contacts', contactsFilter),
-          this.searchObjects('companies', companiesFilter),
-          this.searchObjects('deals', dealsFilter, [
-            'amount',
-            'dealstage',
-          ]),
+          contactsPromise,
+          companiesPromise,
+          dealsPromise,
+          revenuePromise,
         ]);
 
-      const revenueOnDate = dealsData.results
-        .filter((d: any) => d.properties.dealstage === 'closedwon')
-        .reduce(
-          (sum, deal) =>
-            sum + parseFloat(deal.properties.amount || '0'),
-          0
-        );
+      const totalRevenue = revenueResult.results.reduce(
+        (sum: number, deal: any) =>
+          sum + parseFloat(deal.properties.amount || '0'),
+        0
+      );
 
       trendData.push({
-        date: date,
-        contacts: contactsData.total,
-        companies: companiesData.total,
-        deals: dealsData.total,
-        revenue: revenueOnDate,
+        date: chunk.start.toISOString().split('T')[0],
+        contacts: contacts.total,
+        companies: companies.total,
+        deals: deals.total,
+        revenue: totalRevenue,
       });
     }
+
     return trendData;
   }
 
