@@ -305,6 +305,35 @@ class HubSpotService {
               ],
             },
           ];
+      const taskCompletedDateFilter = allTime
+        ? [
+            {
+              filters: [
+                {
+                  propertyName: 'hs_task_status',
+                  operator: 'EQ',
+                  value: 'COMPLETED',
+                },
+              ],
+            },
+          ]
+        : [
+            {
+              filters: [
+                {
+                  propertyName: 'hs_task_status',
+                  operator: 'EQ',
+                  value: 'COMPLETED',
+                },
+                {
+                  propertyName: 'hs_task_completion_date',
+                  operator: 'BETWEEN',
+                  value: startTs,
+                  highValue: endTs,
+                },
+              ],
+            },
+          ];
       const closedDateFilter = {
         propertyName: 'closedate',
         operator: 'BETWEEN',
@@ -388,6 +417,7 @@ class HubSpotService {
         contactsData,
         companiesData,
         tasksData,
+        tasksCompletedData,
         wonDealsData,
         lostDealsData,
         activeDealsData,
@@ -403,6 +433,10 @@ class HubSpotService {
           'hs_task_status',
           'hs_task_completion_date',
         ]),
+        this.searchObjects('tasks', taskCompletedDateFilter, [
+          'hs_task_status',
+          'hs_task_completion_date',
+        ]),
         this.searchObjects('deals', wonDealsFilter, ['amount']),
         this.searchObjects('deals', lostDealsFilter),
         this.searchObjects('deals', activeDealsFilter),
@@ -412,6 +446,7 @@ class HubSpotService {
       const totalContacts = contactsData.total;
       const totalCompanies = companiesData.total;
       const totalTasks = tasksData.total;
+      const tasksCompleted = tasksCompletedData.total;
       const wonDeals = wonDealsData.total;
       const lostDeals = lostDealsData.total;
       const activeDeals = activeDealsData.total;
@@ -433,9 +468,6 @@ class HubSpotService {
         wonDeals + lostDeals > 0
           ? (wonDeals / (wonDeals + lostDeals)) * 100
           : 0;
-      const tasksCompleted = tasksData.results.filter(
-        (task) => task.properties.hs_task_status === 'COMPLETED'
-      ).length;
       const tasksOverdue = tasksData.results.filter((task) => {
         const completionDate = task.properties.hs_task_completion_date;
         return (
