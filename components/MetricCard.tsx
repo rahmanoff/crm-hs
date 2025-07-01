@@ -14,7 +14,7 @@ interface MetricCardProps {
   icon: LucideIcon;
   color?: 'primary' | 'success' | 'warning' | 'danger';
   format?: 'number' | 'currency' | 'percentage' | 'text';
-  subLabel?: string;
+  subLabel?: string | string[];
 }
 
 export default function MetricCard({
@@ -86,25 +86,37 @@ export default function MetricCard({
               <Icon className='w-5 h-5' />
             </div>
           </div>
-          <p className='text-3xl font-bold text-gray-900'>
-            {formatValue(value)}
-          </p>
-          {subLabel && (
-            <p className='text-3xl font-bold text-gray-700 mt-6'>
-              {subLabel}
-            </p>
-          )}
-        </div>
-        {change !== undefined && (
-          <div className='flex items-center mt-4'>
-            {renderChange()}
-            {changeLabel && (
-              <span className='text-sm text-gray-500 ml-1.5'>
-                {changeLabel}
+          <div className='flex items-end gap-3 mb-1'>
+            <span className='text-3xl font-bold text-gray-900'>
+              {formatValue(value)}
+            </span>
+            {change !== undefined && change !== 0 && (
+              <span
+                className={`flex items-center text-xl font-semibold ${getChangeColor()}`}>
+                {change > 0 ? (
+                  <ArrowUpRight className='w-5 h-5 mr-0.5' />
+                ) : (
+                  <ArrowDownRight className='w-5 h-5 mr-0.5' />
+                )}
+                {change > 0 ? '+' : ''}
+                {Math.abs(change).toFixed(1)}%
               </span>
             )}
           </div>
-        )}
+          {Array.isArray(subLabel) ? (
+            <div className='flex gap-6 mt-1'>
+              {subLabel.map((line, idx) => (
+                <span
+                  key={idx}
+                  className='text-sm text-gray-700'>
+                  {line}
+                </span>
+              ))}
+            </div>
+          ) : subLabel ? (
+            <p className='text-sm text-gray-700 mt-1'>{subLabel}</p>
+          ) : null}
+        </div>
       </div>
     </div>
   );
