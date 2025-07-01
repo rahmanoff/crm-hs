@@ -62,8 +62,11 @@ export interface HubSpotTask {
 
 export interface DashboardMetrics {
   totalContacts: number;
+  allTimeContacts: number;
   totalCompanies: number;
+  allTimeCompanies: number;
   totalDeals: number;
+  newDealsValue: number;
   totalTasks: number;
   activeDeals: number;
   activeDealsValue: number;
@@ -334,12 +337,6 @@ class HubSpotService {
             },
           ];
 
-      const lastModifiedDateFilter = {
-        propertyName: 'hs_lastmodifieddate',
-        operator: 'BETWEEN',
-        value: startTs,
-        highValue: endTs,
-      };
       const lostDealsFilter = allTime
         ? [
             {
@@ -360,7 +357,12 @@ class HubSpotService {
                   operator: 'EQ',
                   value: 'closedlost',
                 },
-                lastModifiedDateFilter,
+                {
+                  propertyName: 'hs_lastmodifieddate',
+                  operator: 'BETWEEN',
+                  value: startTs,
+                  highValue: endTs,
+                },
               ],
             },
           ];
@@ -448,10 +450,40 @@ class HubSpotService {
         0
       );
 
+      const newDealsValue = allDealsInRangeData.results.reduce(
+        (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
+        0
+      );
+
+      // Fetch all-time contacts count
+      let allTimeContacts = totalContacts;
+      if (!allTime) {
+        const allTimeContactsData = await this.searchObjects(
+          'contacts',
+          [],
+          ['createdate']
+        );
+        allTimeContacts = allTimeContactsData.total;
+      }
+
+      // Fetch all-time companies count
+      let allTimeCompanies = totalCompanies;
+      if (!allTime) {
+        const allTimeCompaniesData = await this.searchObjects(
+          'companies',
+          [],
+          ['createdate']
+        );
+        allTimeCompanies = allTimeCompaniesData.total;
+      }
+
       return {
         totalContacts,
+        allTimeContacts,
         totalCompanies,
+        allTimeCompanies,
         totalDeals: newDeals,
+        newDealsValue,
         totalTasks,
         activeDeals,
         activeDealsValue,
@@ -467,8 +499,11 @@ class HubSpotService {
       console.error('Error in getDashboardMetrics:', error);
       return {
         totalContacts: 0,
+        allTimeContacts: 0,
         totalCompanies: 0,
+        allTimeCompanies: 0,
         totalDeals: 0,
+        newDealsValue: 0,
         totalTasks: 0,
         activeDeals: 0,
         activeDealsValue: 0,

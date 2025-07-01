@@ -36,7 +36,7 @@ type MetricCardConfig = {
   icon: LucideIcon;
   key: string;
   format?: 'number' | 'currency' | 'percentage' | 'text';
-  subLabel?: string;
+  subLabel?: string | string[];
 };
 
 export default function Home() {
@@ -79,6 +79,9 @@ export default function Home() {
           icon: Users,
           key: 'totalContacts',
           format: 'number',
+          subLabel: metrics.current.allTimeContacts
+            ? `Total: ${metrics.current.allTimeContacts.toLocaleString()}`
+            : undefined,
         },
         {
           title: `New Companies (${timeRangeLabel})`,
@@ -87,6 +90,9 @@ export default function Home() {
           icon: Building2,
           key: 'totalCompanies',
           format: 'number',
+          subLabel: metrics.current.allTimeCompanies
+            ? `Total: ${metrics.current.allTimeCompanies.toLocaleString()}`
+            : undefined,
         },
         {
           title: `New Deals (${timeRangeLabel})`,
@@ -95,6 +101,17 @@ export default function Home() {
           icon: Briefcase,
           key: 'totalDeals',
           format: 'number',
+          subLabel: metrics.current.newDealsValue
+            ? ([
+                `Sum: $${metrics.current.newDealsValue.toLocaleString()}`,
+                metrics.current.averageDealSize
+                  ? `Avg: $${metrics.current.averageDealSize.toLocaleString(
+                      undefined,
+                      { maximumFractionDigits: 0 }
+                    )}`
+                  : null,
+              ].filter(Boolean) as string[])
+            : undefined,
         },
         {
           title: `New Tasks (${timeRangeLabel})`,
