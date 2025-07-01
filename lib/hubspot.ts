@@ -74,6 +74,7 @@ export interface DashboardMetrics {
   lostDeals: number;
   totalRevenue: number;
   averageDealSize: number;
+  averageWonDealSize: number;
   conversionRate: number;
   tasksCompleted: number;
   tasksOverdue: number;
@@ -464,6 +465,8 @@ class HubSpotService {
               0
             ) / newDeals
           : 0;
+      const averageWonDealSize =
+        wonDeals > 0 ? totalRevenue / wonDeals : 0;
       const conversionRate =
         wonDeals + lostDeals > 0
           ? (wonDeals / (wonDeals + lostDeals)) * 100
@@ -523,6 +526,7 @@ class HubSpotService {
         lostDeals,
         totalRevenue,
         averageDealSize,
+        averageWonDealSize,
         conversionRate,
         tasksCompleted,
         tasksOverdue,
@@ -543,6 +547,7 @@ class HubSpotService {
         lostDeals: 0,
         totalRevenue: 0,
         averageDealSize: 0,
+        averageWonDealSize: 0,
         conversionRate: 0,
         tasksCompleted: 0,
         tasksOverdue: 0,
