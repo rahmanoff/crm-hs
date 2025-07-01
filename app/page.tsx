@@ -120,6 +120,7 @@ export default function Home() {
           icon: ClipboardCheck,
           key: 'totalTasks',
           format: 'number',
+          subLabel: `Completed: ${metrics.current.tasksCompleted}  Overdue: ${metrics.current.tasksOverdue}`,
         },
         {
           title: `Revenue (${timeRangeLabel})`,
@@ -128,6 +129,13 @@ export default function Home() {
           icon: DollarSign,
           key: 'totalRevenue',
           format: 'currency',
+          subLabel: [
+            `Won Deals: ${metrics.current.wonDeals}`,
+            `Avg Won Deal: $${metrics.current.averageWonDealSize.toLocaleString(
+              undefined,
+              { maximumFractionDigits: 0 }
+            )}`,
+          ],
         },
         {
           title: `Active Deals`,
