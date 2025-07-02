@@ -233,6 +233,16 @@ export default function Home() {
     },
   };
 
+  const skeletonCardConfigs = [
+    { key: 'totalContacts', span: 'xl:col-span-3' },
+    { key: 'totalCompanies', span: 'xl:col-span-3' },
+    { key: 'totalDeals', span: 'xl:col-span-3' },
+    { key: 'activeDeals', span: 'xl:col-span-3' },
+    { key: 'totalRevenue', span: 'xl:col-span-4' },
+    { key: 'conversionRate', span: 'xl:col-span-4' },
+    { key: 'totalTasks', span: 'xl:col-span-4' },
+  ];
+
   return (
     <div className='min-h-screen bg-gray-50'>
       <header className='bg-white shadow-sm border-b border-gray-200'>
@@ -269,8 +279,12 @@ export default function Home() {
           animate='visible'
           className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-6 mb-8'>
           {loading
-            ? Array.from({ length: 6 }).map((_, index) => (
-                <MetricCardSkeleton key={index} />
+            ? skeletonCardConfigs.map((cfg, idx) => (
+                <div
+                  key={cfg.key}
+                  className={cfg.span}>
+                  <MetricCardSkeleton />
+                </div>
               ))
             : metricCards.map((metric) => (
                 <motion.div
