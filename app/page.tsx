@@ -114,13 +114,17 @@ export default function Home() {
             : undefined,
         },
         {
-          title: `New Tasks (${timeRangeLabel})`,
-          value: metrics.current.totalTasks,
-          prev: metrics.previous.totalTasks,
-          icon: ClipboardCheck,
-          key: 'totalTasks',
+          title: `Active Deals`,
+          value: metrics.current.activeDeals,
+          prev: metrics.previous.activeDeals,
+          icon: LineChartIcon,
+          key: 'activeDeals',
           format: 'number',
-          subLabel: `Completed: ${metrics.current.tasksCompleted}  Overdue: ${metrics.current.tasksOverdue}`,
+          subLabel:
+            metrics.current.activeDealsValue !== undefined &&
+            metrics.current.activeDealsValue !== null
+              ? `Sum: $${metrics.current.activeDealsValue.toLocaleString()}`
+              : undefined,
         },
         {
           title: `Revenue (${timeRangeLabel})`,
@@ -138,23 +142,21 @@ export default function Home() {
           ],
         },
         {
-          title: `Active Deals`,
-          value: metrics.current.activeDeals,
-          prev: metrics.previous.activeDeals,
-          icon: LineChartIcon,
-          key: 'activeDeals',
-          format: 'number',
-          subLabel: metrics.current.activeDealsValue
-            ? `$${metrics.current.activeDealsValue.toLocaleString()}`
-            : undefined,
-        },
-        {
           title: `Close Rate (${timeRangeLabel})`,
           value: metrics.current.conversionRate,
           prev: metrics.previous.conversionRate,
           icon: Target,
           key: 'conversionRate',
           format: 'percentage',
+        },
+        {
+          title: `New Tasks (${timeRangeLabel})`,
+          value: metrics.current.totalTasks,
+          prev: metrics.previous.totalTasks,
+          icon: ClipboardCheck,
+          key: 'totalTasks',
+          format: 'number',
+          subLabel: `Completed: ${metrics.current.tasksCompleted}  Overdue: ${metrics.current.tasksOverdue}`,
         },
       ]
     : [];
@@ -236,12 +238,12 @@ export default function Home() {
         </div>
       </header>
 
-      <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+      <main className='max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
         <motion.div
           variants={containerVariants}
           initial='hidden'
           animate='visible'
-          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8'>
+          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-6 mb-8'>
           {loading
             ? Array.from({ length: 6 }).map((_, index) => (
                 <MetricCardSkeleton key={index} />
@@ -251,11 +253,20 @@ export default function Home() {
                   key={metric.key}
                   variants={itemVariants}
                   className={
-                    ['totalRevenue', 'conversionRate'].includes(
-                      metric.key
-                    )
+                    metric.key === 'totalTasks'
+                      ? 'xl:col-span-4'
+                      : ['totalRevenue', 'conversionRate'].includes(
+                          metric.key
+                        )
+                      ? 'xl:col-span-4'
+                      : [
+                          'totalContacts',
+                          'totalCompanies',
+                          'totalDeals',
+                          'activeDeals',
+                        ].includes(metric.key)
                       ? 'xl:col-span-3'
-                      : 'xl:col-span-2'
+                      : 'xl:col-span-3'
                   }>
                   <MetricCard
                     title={metric.title}
