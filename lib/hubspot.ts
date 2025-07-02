@@ -86,6 +86,7 @@ export interface TrendData {
   companies: number;
   deals: number;
   revenue: number;
+  lostRevenue: number;
 }
 
 class HubSpotService {
@@ -579,6 +580,18 @@ class HubSpotService {
         },
       ];
 
+      const dealClosedDateFilter = [
+        {
+          filters: [
+            {
+              propertyName: 'closedate',
+              operator: 'BETWEEN',
+              value: startTimestamp,
+              highValue: endTimestamp,
+            },
+          ],
+        },
+      ];
       const [contactsData, companiesData, dealsData] =
         await Promise.all([
           this.searchObjects('contacts', dateRangeFilter, [
@@ -587,11 +600,13 @@ class HubSpotService {
           this.searchObjects('companies', dateRangeFilter, [
             'createdate',
           ]),
-          this.searchObjects('deals', dateRangeFilter, [
+          this.searchObjects('deals', dealClosedDateFilter, [
             'createdate',
             'amount',
             'closedate',
             'hs_is_closed_won',
+            'hs_is_closed_lost',
+            'dealstage',
           ]),
         ]);
 
@@ -606,6 +621,7 @@ class HubSpotService {
           companies: 0,
           deals: 0,
           revenue: 0,
+          lostRevenue: 0,
         });
       }
 
@@ -620,12 +636,20 @@ class HubSpotService {
           trendMap.get(dateStr)!.companies++;
       });
       dealsData.results.forEach((d) => {
+        // Won revenue (closedate)
         const isWon = d.properties.hs_is_closed_won === 'true';
         const closedateStr = d.properties.closedate?.split('T')[0];
         if (isWon && closedateStr && trendMap.has(closedateStr)) {
           const day = trendMap.get(closedateStr)!;
           day.revenue += parseFloat(d.properties.amount || '0');
         }
+        // Lost revenue (closedate)
+        const isLost = d.properties.hs_is_closed_lost === 'true';
+        if (isLost && closedateStr && trendMap.has(closedateStr)) {
+          const day = trendMap.get(closedateStr)!;
+          day.lostRevenue += parseFloat(d.properties.amount || '0');
+        }
+        // Still count deals by createdate for the deals trend
         const createdateStr = d.properties.createdate?.split('T')[0];
         if (createdateStr && trendMap.has(createdateStr)) {
           trendMap.get(createdateStr)!.deals++;
