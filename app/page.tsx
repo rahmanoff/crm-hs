@@ -349,18 +349,18 @@ export default function Home() {
               <>
                 <motion.div variants={itemVariants}>
                   <TrendChart
-                    title={`Business Growth Trends (${timeRangeLabel})`}
-                    data={trends}
-                    type='area'
-                    dataKeys={['contacts', 'companies', 'deals']}
-                  />
-                </motion.div>
-                <motion.div variants={itemVariants}>
-                  <TrendChart
                     title={`Revenue Trends (${timeRangeLabel})`}
                     data={trends}
                     type='line'
                     dataKeys={['revenue']}
+                  />
+                </motion.div>
+                <motion.div variants={itemVariants}>
+                  <TrendChart
+                    title={`Business Growth Trends (${timeRangeLabel})`}
+                    data={trends}
+                    type='area'
+                    dataKeys={['contacts', 'companies', 'deals']}
                   />
                 </motion.div>
               </>
