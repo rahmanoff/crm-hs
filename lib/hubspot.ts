@@ -194,6 +194,7 @@ class HubSpotService {
     let allResults: any[] = [];
     let hasMore = true;
     let after: string | undefined = undefined;
+    let page = 1;
 
     while (hasMore) {
       const body: any = { filterGroups, properties, limit: 100 };
@@ -204,17 +205,29 @@ class HubSpotService {
         const response = await this.makePostRequest(endpoint, body);
         if (response.results && response.results.length > 0) {
           allResults = allResults.concat(response.results);
+          const lastId =
+            response.results[response.results.length - 1]?.id;
+          console.log(
+            `[searchObjects] Page ${page}: Fetched ${response.results.length} results. Last ID: ${lastId}`
+          );
+        } else {
+          console.log(`[searchObjects] Page ${page}: No results.`);
         }
         if (response.paging && response.paging.next) {
           after = response.paging.next.after;
+          hasMore = true;
         } else {
           hasMore = false;
         }
+        page++;
       } catch (error) {
-        console.error(`Failed to fetch page for ${objectType}.`, error);
+        console.error(`[searchObjects] Error on page ${page}:`, error);
         hasMore = false;
       }
     }
+    console.log(
+      `[searchObjects] Total results for ${objectType}: ${allResults.length}`
+    );
     return { total: allResults.length, results: allResults };
   }
 
@@ -236,12 +249,23 @@ class HubSpotService {
     return data.results || [];
   }
 
-  async getDeals(limit = 100): Promise<HubSpotDeal[]> {
-    const data = await this.makeRequest('/crm/v3/objects/deals', {
-      limit,
-      properties:
-        'dealname,amount,dealstage,closedate,createdate,lastmodifieddate,pipeline,hs_is_closed,hs_is_closed_won,hs_is_closed_lost',
-    });
+  async getDeals(): Promise<HubSpotDeal[]> {
+    const data = await this.searchObjects(
+      'deals',
+      [],
+      [
+        'dealname',
+        'amount',
+        'dealstage',
+        'closedate',
+        'createdate',
+        'lastmodifieddate',
+        'pipeline',
+        'hs_is_closed',
+        'hs_is_closed_won',
+        'hs_is_closed_lost',
+      ]
+    );
     return data.results || [];
   }
 
@@ -458,6 +482,23 @@ class HubSpotService {
         (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
         0
       );
+
+      if (true) {
+        // Always log for any time range
+        console.log('[getDashboardMetrics] Metrics:', {
+          days,
+          totalContacts,
+          totalCompanies,
+          totalTasks,
+          tasksCompleted,
+          wonDeals,
+          lostDeals,
+          activeDeals,
+          newDeals,
+          totalRevenue,
+        });
+      }
+
       const averageDealSize =
         newDeals > 0
           ? allDealsInRangeData.results.reduce(
@@ -667,7 +708,7 @@ class HubSpotService {
       const [contacts, companies, deals, tasks] = await Promise.all([
         this.getContacts(limit),
         this.getCompanies(limit),
-        this.getDeals(limit),
+        this.getDeals(),
         this.getTasks(limit),
       ]);
       const allActivities = [
