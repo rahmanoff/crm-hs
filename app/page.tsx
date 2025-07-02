@@ -247,8 +247,8 @@ export default function Home() {
     <div className='min-h-screen bg-gray-50'>
       <header className='bg-white shadow-sm border-b border-gray-200'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-          <div className='flex justify-between items-center py-4'>
-            <div>
+          <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 gap-4 sm:gap-0'>
+            <div className='text-center sm:text-left'>
               <h1 className='text-2xl font-bold text-gray-900'>
                 CRM Dashboard
               </h1>
@@ -256,12 +256,12 @@ export default function Home() {
                 Your business metrics and trends at a glance
               </p>
             </div>
-            <div className='flex items-center space-x-4'>
+            <div className='flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 w-full sm:w-auto'>
               <TimeRangeSelector />
               <button
                 onClick={handleRefresh}
                 disabled={loading}
-                className='btn-secondary flex items-center space-x-2'>
+                className='btn-secondary flex items-center space-x-2 w-full sm:w-auto justify-center'>
                 <RefreshCw
                   className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
                 />
