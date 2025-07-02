@@ -62,15 +62,31 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
-    fetch('/api/activity/metrics')
+    fetch(`/api/activity/metrics?days=${timeRange}`)
       .then((res) => res.json())
       .then((data) => {
-        if (typeof data.openTasks === 'undefined') {
-          data.openTasks = data.totalTasks - data.completedLast30Days;
+        // Map new property names to old ones for UI compatibility
+        const mapped = {
+          totalTasks: data.totalTasks,
+          createdLast30Days: data.createdInPeriod,
+          completedLast30Days: data.completedInPeriod,
+          overdue: data.overdue,
+          openTasks: data.openTasks,
+          createdPrev30Days: data.createdPrevPeriod,
+        };
+        if (typeof mapped.openTasks === 'undefined') {
+          mapped.openTasks =
+            mapped.totalTasks - mapped.completedLast30Days;
         }
-        setTaskMetrics(data);
+        setTaskMetrics(mapped);
       });
-  }, [fetchData]);
+  }, [fetchData, timeRange]);
+
+  useEffect(() => {
+    if (metrics && timeRange === 0) {
+      console.log('Total deals (All Time):', metrics.current.totalDeals);
+    }
+  }, [metrics, timeRange]);
 
   const handleRefresh = async () => {
     try {
@@ -168,7 +184,7 @@ export default function Home() {
           format: 'percentage',
         },
         {
-          title: `New Tasks (Last 30d)`,
+          title: `New Tasks (${timeRangeLabel})`,
           value: taskMetrics ? taskMetrics.createdLast30Days : 0,
           prev: taskMetrics ? taskMetrics.createdPrev30Days : undefined,
           icon: ClipboardCheck,
@@ -330,12 +346,12 @@ export default function Home() {
             initial='hidden'
             animate='visible'>
             {timeRange === 0 ? (
-              <div className='h-full flex items-center justify-center p-6 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-center text-gray-500 dark:text-gray-400'>
+              <div className='h-full flex items-center justify-center p-6 bg-white border border-gray-200 rounded-lg text-center text-gray-700'>
                 <div>
-                  <p>
+                  <p className='font-semibold'>
                     Trend data is not available for the "All Time" view.
                   </p>
-                  <p className='text-sm'>
+                  <p className='text-sm text-gray-500'>
                     Please select a 30 or 90-day range to see trends.
                   </p>
                 </div>
@@ -357,12 +373,12 @@ export default function Home() {
             initial='hidden'
             animate='visible'>
             {timeRange === 0 ? (
-              <div className='h-full flex items-center justify-center p-6 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-center text-gray-500 dark:text-gray-400'>
+              <div className='h-full flex items-center justify-center p-6 bg-white border border-gray-200 rounded-lg text-center text-gray-700'>
                 <div>
-                  <p>
+                  <p className='font-semibold'>
                     Trend data is not available for the "All Time" view.
                   </p>
-                  <p className='text-sm'>
+                  <p className='text-sm text-gray-500'>
                     Please select a 30 or 90-day range to see trends.
                   </p>
                 </div>
