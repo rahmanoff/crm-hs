@@ -590,6 +590,8 @@ class HubSpotService {
           this.searchObjects('deals', dateRangeFilter, [
             'createdate',
             'amount',
+            'closedate',
+            'hs_is_closed_won',
           ]),
         ]);
 
@@ -618,11 +620,15 @@ class HubSpotService {
           trendMap.get(dateStr)!.companies++;
       });
       dealsData.results.forEach((d) => {
-        const dateStr = d.properties.createdate?.split('T')[0];
-        if (dateStr && trendMap.has(dateStr)) {
-          const day = trendMap.get(dateStr)!;
-          day.deals++;
+        const isWon = d.properties.hs_is_closed_won === 'true';
+        const closedateStr = d.properties.closedate?.split('T')[0];
+        if (isWon && closedateStr && trendMap.has(closedateStr)) {
+          const day = trendMap.get(closedateStr)!;
           day.revenue += parseFloat(d.properties.amount || '0');
+        }
+        const createdateStr = d.properties.createdate?.split('T')[0];
+        if (createdateStr && trendMap.has(createdateStr)) {
+          trendMap.get(createdateStr)!.deals++;
         }
       });
       return Array.from(trendMap.values());
