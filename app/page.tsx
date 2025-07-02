@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
@@ -37,6 +37,7 @@ type MetricCardConfig = {
   key: string;
   format?: 'number' | 'currency' | 'percentage' | 'text';
   subLabel?: string | string[];
+  color?: 'primary' | 'success' | 'warning' | 'danger';
 };
 
 export default function Home() {
@@ -50,8 +51,25 @@ export default function Home() {
     timeRange,
   } = useCrmStore();
 
+  const [taskMetrics, setTaskMetrics] = useState<{
+    createdLast30Days: number;
+    totalTasks: number;
+    completedLast30Days: number;
+    overdue: number;
+    openTasks?: number;
+    createdPrev30Days?: number;
+  } | null>(null);
+
   useEffect(() => {
     fetchData();
+    fetch('/api/activity/metrics')
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.openTasks === 'undefined') {
+          data.openTasks = data.totalTasks - data.completedLast30Days;
+        }
+        setTaskMetrics(data);
+      });
   }, [fetchData]);
 
   const handleRefresh = async () => {
@@ -150,13 +168,19 @@ export default function Home() {
           format: 'percentage',
         },
         {
-          title: `New Tasks (${timeRangeLabel})`,
-          value: metrics.current.totalTasks,
-          prev: metrics.previous.totalTasks,
+          title: `New Tasks (Last 30d)`,
+          value: taskMetrics ? taskMetrics.createdLast30Days : 0,
+          prev: taskMetrics ? taskMetrics.createdPrev30Days : undefined,
           icon: ClipboardCheck,
           key: 'totalTasks',
           format: 'number',
-          subLabel: `Completed: ${metrics.current.tasksCompleted}  Overdue: ${metrics.current.tasksOverdue}`,
+          subLabel: taskMetrics
+            ? [
+                `Open Tasks: ${taskMetrics.openTasks}`,
+                `Completed: ${taskMetrics.completedLast30Days}`,
+              ]
+            : undefined,
+          color: 'primary',
         },
       ]
     : [];
@@ -279,6 +303,7 @@ export default function Home() {
                     }
                     format={metric.format}
                     subLabel={metric.subLabel}
+                    color={metric.color}
                   />
                 </motion.div>
               ))}
