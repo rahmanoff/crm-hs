@@ -323,14 +323,14 @@ export default function Home() {
               ))}
         </motion.div>
 
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+        {/* Trends Row: Revenue + Business Growth */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
           <motion.div
-            variants={containerVariants}
+            variants={itemVariants}
             initial='hidden'
-            animate='visible'
-            className='lg:col-span-2 space-y-6'>
+            animate='visible'>
             {timeRange === 0 ? (
-              <div className='h-full flex items-center justify-center md:col-span-2 lg:col-span-2 p-6 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-center text-gray-500 dark:text-gray-400'>
+              <div className='h-full flex items-center justify-center p-6 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-center text-gray-500 dark:text-gray-400'>
                 <div>
                   <p>
                     Trend data is not available for the "All Time" view.
@@ -341,43 +341,55 @@ export default function Home() {
                 </div>
               </div>
             ) : loading ? (
-              <>
-                <ChartSkeleton />
-                <ChartSkeleton />
-              </>
+              <ChartSkeleton />
             ) : (
-              <>
-                <motion.div variants={itemVariants}>
-                  <TrendChart
-                    title={`Revenue Trends (${timeRangeLabel})`}
-                    data={trends}
-                    type='line'
-                    dataKeys={['revenue']}
-                  />
-                </motion.div>
-                <motion.div variants={itemVariants}>
-                  <TrendChart
-                    title={`Business Growth Trends (${timeRangeLabel})`}
-                    data={trends}
-                    type='area'
-                    dataKeys={['contacts', 'companies', 'deals']}
-                  />
-                </motion.div>
-              </>
+              <TrendChart
+                title={`Revenue Trends (${timeRangeLabel})`}
+                data={trends}
+                type='line'
+                dataKeys={['revenue']}
+                colors={['#10b981']}
+              />
             )}
           </motion.div>
-
           <motion.div
             variants={itemVariants}
             initial='hidden'
             animate='visible'>
-            {loading ? (
-              <ActivityFeedSkeleton />
+            {timeRange === 0 ? (
+              <div className='h-full flex items-center justify-center p-6 bg-gray-100 dark:bg-gray-800/50 rounded-lg text-center text-gray-500 dark:text-gray-400'>
+                <div>
+                  <p>
+                    Trend data is not available for the "All Time" view.
+                  </p>
+                  <p className='text-sm'>
+                    Please select a 30 or 90-day range to see trends.
+                  </p>
+                </div>
+              </div>
+            ) : loading ? (
+              <ChartSkeleton />
             ) : (
-              <ActivityFeed activities={activity} />
+              <TrendChart
+                title={`Business Growth Trends (${timeRangeLabel})`}
+                data={trends}
+                type='area'
+                dataKeys={['contacts', 'companies', 'deals']}
+              />
             )}
           </motion.div>
         </div>
+        {/* Recent Activity Row */}
+        <motion.div
+          variants={itemVariants}
+          initial='hidden'
+          animate='visible'>
+          {loading ? (
+            <ActivityFeedSkeleton />
+          ) : (
+            <ActivityFeed activities={activity} />
+          )}
+        </motion.div>
       </main>
     </div>
   );
