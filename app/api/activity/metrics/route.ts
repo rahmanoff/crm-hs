@@ -21,6 +21,18 @@ export async function GET(req: Request) {
     ]
   );
 
+  // Debug: log first 5 tasks with relevant fields
+  console.log(
+    '[activity/metrics] First 5 tasks:',
+    allTasksData.results.slice(0, 5).map((task) => ({
+      id: task.id,
+      hs_createdate: task.properties.hs_createdate,
+      hs_task_status: task.properties.hs_task_status,
+      hs_task_completion_date: task.properties.hs_task_completion_date,
+      hs_timestamp: task.properties.hs_timestamp,
+    }))
+  );
+
   const PERIOD = days * 24 * 60 * 60 * 1000;
   const start = now - PERIOD;
   const prevStart = start - PERIOD;
@@ -70,6 +82,8 @@ export async function GET(req: Request) {
     overdue,
     openTasks,
     createdPrevPeriod,
+    // Debug: include first 10 tasks for frontend inspection
+    tasks: allTasksData.results.slice(0, 10),
   };
   return NextResponse.json(metrics);
 }

@@ -79,12 +79,19 @@ export default function Home() {
             mapped.totalTasks - mapped.completedLast30Days;
         }
         setTaskMetrics(mapped);
+        // Debug: log all task metrics if available
+        if (metrics) {
+          console.log('[UI] Dashboard metrics:', metrics);
+        }
       });
   }, [fetchData, timeRange]);
 
   useEffect(() => {
     if (metrics && timeRange === 0) {
-      console.log('Total deals (All Time):', metrics.current.totalDeals);
+      console.log(
+        'Total deals (All Time):',
+        metrics.current.totalDeals
+      );
     }
   }, [metrics, timeRange]);
 
