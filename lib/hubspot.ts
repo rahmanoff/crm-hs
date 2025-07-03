@@ -758,6 +758,49 @@ class HubSpotService {
       return [];
     }
   }
+
+  /**
+   * Returns today's activity summary: closed tasks, new contacts, new companies, new deals (name and sum)
+   */
+  async getTodayActivitySummary() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+
+    // Contacts created today
+    const contactsData = await this.searchObjects('contacts', [
+      { filters: [{ propertyName: 'createdate', operator: 'BETWEEN', value: start, highValue: end }] }
+    ], ['createdate']);
+
+    // Companies created today
+    const companiesData = await this.searchObjects('companies', [
+      { filters: [{ propertyName: 'createdate', operator: 'BETWEEN', value: start, highValue: end }] }
+    ], ['createdate']);
+
+    // Tasks closed today
+    const closedTasksData = await this.searchObjects('tasks', [
+      { filters: [
+        { propertyName: 'hs_task_status', operator: 'EQ', value: 'COMPLETED' },
+        { propertyName: 'hs_task_completion_date', operator: 'BETWEEN', value: start, highValue: end }
+      ] }
+    ], ['hs_task_status', 'hs_task_completion_date']);
+
+    // Deals created today
+    const dealsData = await this.searchObjects('deals', [
+      { filters: [{ propertyName: 'createdate', operator: 'BETWEEN', value: start, highValue: end }] }
+    ], ['dealname', 'amount', 'createdate']);
+    const newDeals = dealsData.results.map((deal: any) => ({
+      name: deal.properties.dealname || 'New Deal',
+      amount: deal.properties.amount ? parseFloat(deal.properties.amount) : 0
+    }));
+
+    return {
+      closedTasks: closedTasksData.total,
+      newContacts: contactsData.total,
+      newCompanies: companiesData.total,
+      newDeals
+    };
+  }
 }
 
 export const hubSpotService = new HubSpotService();

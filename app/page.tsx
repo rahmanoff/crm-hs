@@ -40,6 +40,93 @@ type MetricCardConfig = {
   color?: 'primary' | 'success' | 'warning' | 'danger';
 };
 
+function TodayActivityCard() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<{
+    closedTasks: number;
+    newContacts: number;
+    newCompanies: number;
+    newDeals: { name: string; amount: number }[];
+  } | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetch('/api/activity/today')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch today\'s activity');
+        return res.json();
+      })
+      .then(setData)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <ActivityFeedSkeleton />;
+  }
+  if (error) {
+    return (
+      <div className='card text-center p-6 text-red-600'>
+        <p className='font-semibold'>Failed to load today\'s activity</p>
+        <p className='text-sm'>{error}</p>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  return (
+    <div className='card'>
+      <h3 className='text-lg font-semibold text-gray-900 mb-4'>Today Activity</h3>
+      <div className='grid grid-cols-2 gap-4 mb-4'>
+        <div className='flex flex-col items-center'>
+          <span className='text-2xl font-bold text-black'>{data.closedTasks}</span>
+          <span className='text-xs text-gray-500'>Closed Tasks</span>
+        </div>
+        <div className='flex flex-col items-center'>
+          <span className='text-2xl font-bold text-black'>{data.newContacts}</span>
+          <span className='text-xs text-gray-500'>New Contacts</span>
+        </div>
+        <div className='flex flex-col items-center'>
+          <span className='text-2xl font-bold text-black'>{data.newCompanies}</span>
+          <span className='text-xs text-gray-500'>New Companies</span>
+        </div>
+        <div className='flex flex-col items-center'>
+          <span className='text-2xl font-bold text-black'>{data.newDeals.length}</span>
+          <span className='text-xs text-gray-500'>New Deals</span>
+        </div>
+      </div>
+      <div>
+        <h4 className='font-semibold text-gray-800 mb-2'>New Deals</h4>
+        {data.newDeals.length === 0 ? (
+          <p className='text-gray-500 text-sm'>No new deals today</p>
+        ) : (
+          <>
+            <ul className='divide-y divide-gray-200'>
+              {data.newDeals.map((deal, idx) => (
+                <li key={idx} className='py-1'>
+                  <span className='text-gray-900'>
+                    {deal.name} <span className='text-gray-700 font-mono font-bold'>${deal.amount.toLocaleString()}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {data.newDeals.length > 1 && (
+              <div className='mt-2 text-right'>
+                <span className='text-gray-800 font-semibold'>Total: </span>
+                <span className='text-black font-bold font-mono'>
+                  ${data.newDeals.reduce((sum, d) => sum + d.amount, 0).toLocaleString()}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const {
     metrics,
@@ -407,11 +494,7 @@ export default function Home() {
           variants={itemVariants}
           initial='hidden'
           animate='visible'>
-          {loading ? (
-            <ActivityFeedSkeleton />
-          ) : (
-            <ActivityFeed activities={activity} />
-          )}
+          <TodayActivityCard />
         </motion.div>
       </main>
     </div>
