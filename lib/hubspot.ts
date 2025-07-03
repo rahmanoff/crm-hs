@@ -484,19 +484,10 @@ class HubSpotService {
       );
 
       if (true) {
-        // Always log for any time range
-        console.log('[getDashboardMetrics] Metrics:', {
-          days,
-          totalContacts,
-          totalCompanies,
-          totalTasks,
-          tasksCompleted,
-          wonDeals,
-          lostDeals,
-          activeDeals,
-          newDeals,
-          totalRevenue,
-        });
+        // Brief summary log for server console
+        console.log(
+          `[getDashboardMetrics] days=${days} contacts=${totalContacts} companies=${totalCompanies} tasks=${totalTasks} won=${wonDeals} lost=${lostDeals} active=${activeDeals} new=${newDeals} revenue=${totalRevenue}`
+        );
       }
 
       const averageDealSize =
