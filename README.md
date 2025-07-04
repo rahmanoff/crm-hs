@@ -29,7 +29,7 @@ A modern, interactive dashboard for HubSpot CRM that provides real-time insights
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm 8+
 - HubSpot account with API access
 - HubSpot Private App or API Key
@@ -37,23 +37,28 @@ A modern, interactive dashboard for HubSpot CRM that provides real-time insights
 ## 🔧 Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <your-repo-url>
    cd hubspot-crm-dashboard
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Environment Setup**
-   Create a `.env.local` file in the root directory:
-   ```env
-   HUBSPOT_API_KEY=your_hubspot_api_key_or_private_app_token
-   ```
+
+   - Copy `.env.example` to `.env.local` (or `.env` for production):
+     ```bash
+     cp .env.example .env.local
+     ```
+   - Edit `.env.local` and fill in your real values.
 
 4. **Run the development server**
+
    ```bash
    npm run dev
    ```
@@ -64,6 +69,7 @@ A modern, interactive dashboard for HubSpot CRM that provides real-time insights
 ## 🔑 HubSpot API Setup
 
 ### Option 1: Private App (Recommended)
+
 1. Go to HubSpot Settings → Account Setup → Integrations → Private Apps
 2. Create a new Private App
 3. Add the following scopes:
@@ -74,6 +80,7 @@ A modern, interactive dashboard for HubSpot CRM that provides real-time insights
 4. Copy the Private App token (starts with `pat-`)
 
 ### Option 2: API Key
+
 1. Go to HubSpot Settings → Account Setup → Integrations → API Keys
 2. Create a new API Key
 3. Copy the API Key
@@ -81,12 +88,14 @@ A modern, interactive dashboard for HubSpot CRM that provides real-time insights
 ## 🚀 Production Deployment
 
 ### Vercel (Recommended)
+
 1. Push your code to GitHub
 2. Connect your repository to Vercel
 3. Add environment variables in Vercel dashboard
 4. Deploy!
 
 ### Other Platforms
+
 The app can be deployed to any platform that supports Node.js:
 
 ```bash
@@ -120,13 +129,33 @@ npm start
 ## 🔧 Configuration
 
 ### Environment Variables
+
 - `HUBSPOT_API_KEY`: Your HubSpot API key or Private App token
+- See `.env.example` for all required variables and documentation.
 
 ### API Rate Limiting
+
 The app includes built-in rate limiting to respect HubSpot's API limits:
+
 - 100ms delay between requests
 - 500ms delay between different data types
 - Automatic retry on rate limit errors
+
+## 🧪 Testing & Coverage
+
+- **Run all tests:**
+  ```bash
+  npm test
+  ```
+- **Run tests with coverage report:**
+  ```bash
+  npm test -- --coverage
+  ```
+- **Test types:**
+  - Unit tests for business logic (mocked, no real API calls)
+  - Integration tests for API endpoints (with Next.js polyfills)
+  - Component tests for UI
+- **Coverage reports** are output in the terminal and as HTML in the `coverage/` directory.
 
 ## 📈 Performance
 
@@ -147,10 +176,12 @@ The app includes built-in rate limiting to respect HubSpot's API limits:
 ### Common Issues
 
 1. **401 Unauthorized Error**
+
    - Check your HubSpot API key/token
    - Ensure proper scopes are configured
 
 2. **429 Rate Limit Error**
+
    - The app handles this automatically
    - Check logs for retry attempts
 
@@ -159,7 +190,9 @@ The app includes built-in rate limiting to respect HubSpot's API limits:
    - Check API permissions
 
 ### Debug Mode
+
 Enable detailed logging by setting:
+
 ```env
 DEBUG=true
 ```
@@ -182,4 +215,4 @@ For support, please open an issue in the GitHub repository or contact the develo
 
 ---
 
-**Built with ❤️ using Next.js and HubSpot API** 
+**Built with ❤️ using Next.js and HubSpot API**
