@@ -11,6 +11,11 @@ const customJestConfig = {
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
   },
+  transformIgnorePatterns: ['/node_modules/(?!(p-limit|yocto-queue)/)'],
+  transform: {
+    '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.js$': 'babel-jest',
+  },
 };
 
 module.exports = createJestConfig(customJestConfig);

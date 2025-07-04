@@ -213,6 +213,60 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For support, please open an issue in the GitHub repository or contact the development team.
 
+## Testing with ESM, TypeScript, and Jest
+
+This project uses modern ESM-only dependencies (e.g., `p-limit`) and TypeScript. By default, Jest does not natively support ESM in node_modules, so the following setup is used:
+
+- **Babel Transpilation:** A `babel.config.js` is provided to allow Jest to transpile both TypeScript and ESM JavaScript files, including ESM-only node_modules.
+- **Jest Transform Settings:** The Jest config (`jest.config.js`) is set to:
+  - Use `ts-jest` for `.ts`/`.tsx` files
+  - Use `babel-jest` for `.js` files (including ESM node_modules)
+  - Allowlist ESM node_modules (like `p-limit` and `yocto-queue`) for transformation
+- **Why?** Some dependencies ship only as ESM, which Node.js and Next.js support natively, but Jest (as of v30) requires extra config to test them.
+
+**Best Practices:**
+
+- Keep Babel, Jest, and related presets up to date.
+- If you add new ESM-only dependencies, add them to the `transformIgnorePatterns` allowlist in `jest.config.js`.
+- For even better ESM support in the future, consider Vitest or Node's native test runner as they mature.
+
+**Production Note:**
+
+- This setup is only for testing. Your production build (Next.js/Node.js) runs ESM natively and does not use Babel at runtime.
+
+## Scalability Roadmap: Caching
+
+This project currently uses in-memory caching for performance. This is suitable for:
+
+- Local development
+- Single-instance deployments
+- Early-stage or moderate-traffic production
+
+### When to Add Distributed Caching (e.g., Redis)
+
+Add Redis or another distributed cache when:
+
+- You deploy to multiple server instances (horizontal scaling, serverless, containers)
+- You notice cache misses or inconsistent data due to requests hitting different instances
+- You want to persist cache across restarts or deployments
+- You need to share cache between services (API, background jobs, etc.)
+
+**How to Add Redis:**
+
+1. Install a Redis client (e.g., `ioredis` or `node-redis`)
+2. Replace in-memory cache logic with Redis get/set (with TTL)
+3. Use cache keys that include query params, user, and time range
+4. Optionally, set up cache warming or background pre-fetching for common queries
+
+**Monitoring:**
+
+- Track cache hit rates and API response times
+- Add logging/alerts for slow queries or cache failures
+
+**Note:**
+
+- In-memory cache is fast and simple, but not shared between instances. Redis is recommended for production at scale.
+
 ---
 
 **Built with ❤️ using Next.js and HubSpot API**

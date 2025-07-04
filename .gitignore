@@ -112,4 +112,22 @@ temp/
 
 # Production build artifacts
 build/
-dist/ 
+dist/
+
+# Node
+node_modules/
+
+# Build
+.next/
+out/
+
+# Env
+.env
+.env.*
+
+# Test
+coverage/
+
+# Misc
+.DS_Store
+babel.config.js 
