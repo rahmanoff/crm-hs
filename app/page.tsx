@@ -40,36 +40,33 @@ type MetricCardConfig = {
   color?: 'primary' | 'success' | 'warning' | 'danger';
 };
 
-function TodayActivityCard() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<{
-    closedTasks: number;
-    newContacts: number;
-    newCompanies: number;
-    newDeals: { name: string; amount: number }[];
-  } | null>(null);
+type TodayActivityData = {
+  closedTasks: number;
+  newContacts: number;
+  newCompanies: number;
+  newDeals: { name: string; amount: number }[];
+};
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetch('/api/activity/today')
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch today\'s activity');
-        return res.json();
-      })
-      .then(setData)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+type TodayActivityCardProps = {
+  data: TodayActivityData | null;
+  loading: boolean;
+  error: string | null;
+};
 
+function TodayActivityCard({
+  data,
+  loading,
+  error,
+}: TodayActivityCardProps) {
   if (loading) {
     return <ActivityFeedSkeleton />;
   }
   if (error) {
     return (
       <div className='card text-center p-6 text-red-600'>
-        <p className='font-semibold'>Failed to load today\'s activity</p>
+        <p className='font-semibold'>
+          Failed to load today&apos;s activity
+        </p>
         <p className='text-sm'>{error}</p>
       </div>
     );
@@ -78,22 +75,32 @@ function TodayActivityCard() {
 
   return (
     <div className='card'>
-      <h3 className='text-lg font-semibold text-gray-900 mb-4'>Today Activity</h3>
+      <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+        Today Activity
+      </h3>
       <div className='grid grid-cols-2 gap-4 mb-4'>
         <div className='flex flex-col items-center'>
-          <span className='text-2xl font-bold text-black'>{data.closedTasks}</span>
+          <span className='text-2xl font-bold text-black'>
+            {data.closedTasks}
+          </span>
           <span className='text-xs text-gray-500'>Closed Tasks</span>
         </div>
         <div className='flex flex-col items-center'>
-          <span className='text-2xl font-bold text-black'>{data.newContacts}</span>
+          <span className='text-2xl font-bold text-black'>
+            {data.newContacts}
+          </span>
           <span className='text-xs text-gray-500'>New Contacts</span>
         </div>
         <div className='flex flex-col items-center'>
-          <span className='text-2xl font-bold text-black'>{data.newCompanies}</span>
+          <span className='text-2xl font-bold text-black'>
+            {data.newCompanies}
+          </span>
           <span className='text-xs text-gray-500'>New Companies</span>
         </div>
         <div className='flex flex-col items-center'>
-          <span className='text-2xl font-bold text-black'>{data.newDeals.length}</span>
+          <span className='text-2xl font-bold text-black'>
+            {data.newDeals.length}
+          </span>
           <span className='text-xs text-gray-500'>New Deals</span>
         </div>
       </div>
@@ -104,19 +111,38 @@ function TodayActivityCard() {
         ) : (
           <>
             <ul className='divide-y divide-gray-200'>
-              {data.newDeals.map((deal, idx) => (
-                <li key={idx} className='py-1'>
-                  <span className='text-gray-900'>
-                    {deal.name} <span className='text-gray-700 font-mono font-bold'>${deal.amount.toLocaleString()}</span>
-                  </span>
-                </li>
-              ))}
+              {data.newDeals.map(
+                (
+                  deal: { name: string; amount: number },
+                  idx: number
+                ) => (
+                  <li
+                    key={idx}
+                    className='py-1'>
+                    <span className='text-gray-900'>
+                      {deal.name}{' '}
+                      <span className='text-gray-700 font-mono font-bold'>
+                        ${deal.amount.toLocaleString()}
+                      </span>
+                    </span>
+                  </li>
+                )
+              )}
             </ul>
             {data.newDeals.length > 1 && (
               <div className='mt-2 text-right'>
-                <span className='text-gray-800 font-semibold'>Total: </span>
+                <span className='text-gray-800 font-semibold'>
+                  Total:{' '}
+                </span>
                 <span className='text-black font-bold font-mono'>
-                  ${data.newDeals.reduce((sum, d) => sum + d.amount, 0).toLocaleString()}
+                  $
+                  {data.newDeals
+                    .reduce(
+                      (sum: number, d: { amount: number }) =>
+                        sum + d.amount,
+                      0
+                    )
+                    .toLocaleString()}
                 </span>
               </div>
             )}
@@ -146,9 +172,37 @@ export default function Home() {
     openTasks?: number;
     createdPrev30Days?: number;
   } | null>(null);
+  const [taskLoading, setTaskLoading] = useState(false);
+  const [slowLoading, setSlowLoading] = useState(false);
+
+  // Today Activity state
+  const [todayActivity, setTodayActivity] = useState(null);
+  const [todayActivityLoading, setTodayActivityLoading] =
+    useState(false);
+  const [todayActivityError, setTodayActivityError] = useState<
+    string | null
+  >(null);
+
+  // Fetch all dashboard data including today activity
+  const fetchAllDashboardData = async () => {
+    setTodayActivityLoading(true);
+    setTodayActivityError(null);
+    try {
+      await fetchData(); // existing metrics/trends/tasks
+      const res = await fetch('/api/activity/today');
+      if (!res.ok) throw new Error("Failed to fetch today's activity");
+      const data = await res.json();
+      setTodayActivity(data);
+    } catch (e: any) {
+      setTodayActivityError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTodayActivityLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchData();
+    setTaskLoading(true);
+    fetchAllDashboardData();
     fetch(`/api/activity/metrics?days=${timeRange}`)
       .then((res) => res.json())
       .then((data) => {
@@ -166,11 +220,13 @@ export default function Home() {
             mapped.totalTasks - mapped.completedLast30Days;
         }
         setTaskMetrics(mapped);
+        setTaskLoading(false);
         // Debug: log all task metrics if available
         if (metrics) {
           console.log('[UI] Dashboard metrics:', metrics);
         }
-      });
+      })
+      .catch(() => setTaskLoading(false));
   }, [fetchData, timeRange]);
 
   useEffect(() => {
@@ -182,9 +238,18 @@ export default function Home() {
     }
   }, [metrics, timeRange]);
 
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => setSlowLoading(true), 2000);
+      return () => clearTimeout(timer);
+    } else {
+      setSlowLoading(false);
+    }
+  }, [loading]);
+
   const handleRefresh = async () => {
     try {
-      await fetchData();
+      await fetchAllDashboardData();
       toast.success('Data refreshed successfully!');
     } catch (err) {
       toast.error('Failed to refresh data.');
@@ -302,6 +367,9 @@ export default function Home() {
     return ((current - prev) / Math.abs(prev)) * 100;
   }
 
+  // Only render metric cards when both metrics and taskMetrics are loaded
+  const allMetricsLoaded = metrics && !taskLoading && taskMetrics;
+
   if (error) {
     return (
       <div className='min-h-screen bg-red-50 flex items-center justify-center'>
@@ -355,6 +423,7 @@ export default function Home() {
 
   return (
     <div className='min-h-screen bg-gray-50'>
+      {/* App-styled slow-loading indicator below header */}
       <header className='bg-white shadow-sm border-b border-gray-200'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
           <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 gap-4 sm:gap-0'>
@@ -380,6 +449,16 @@ export default function Home() {
             </div>
           </div>
         </div>
+        {slowLoading && (
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2'>
+            <div className='flex items-center justify-center bg-primary-50 text-primary-700 rounded-lg shadow p-3 gap-2 border border-primary-200 animate-pulse'>
+              <RefreshCw className='w-5 h-5 animate-spin text-primary-500' />
+              <span className='font-medium'>
+                Loading all data, this may take forever...
+              </span>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className='max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
@@ -388,7 +467,7 @@ export default function Home() {
           initial='hidden'
           animate='visible'
           className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-6 mb-8'>
-          {loading
+          {!allMetricsLoaded || loading
             ? skeletonCardConfigs.map((cfg, idx) => (
                 <div
                   key={cfg.key}
@@ -416,19 +495,27 @@ export default function Home() {
                       ? 'xl:col-span-3'
                       : 'xl:col-span-3'
                   }>
-                  <MetricCard
-                    title={metric.title}
-                    value={metric.value}
-                    icon={metric.icon}
-                    change={
-                      metric.prev !== null && metric.prev !== undefined
-                        ? getChange(metric.value, metric.prev)
-                        : undefined
-                    }
-                    format={metric.format}
-                    subLabel={metric.subLabel}
-                    color={metric.color}
-                  />
+                  {/* Show skeleton for New Tasks card if task metrics are still loading */}
+                  {metric.key === 'totalTasks' && taskLoading ? (
+                    <MetricCardSkeleton />
+                  ) : (
+                    <MetricCard
+                      title={metric.title}
+                      value={metric.value}
+                      icon={metric.icon}
+                      change={
+                        timeRange === 30 || timeRange === 90
+                          ? metric.prev !== null &&
+                            metric.prev !== undefined
+                            ? getChange(metric.value, metric.prev)
+                            : undefined
+                          : undefined
+                      }
+                      format={metric.format}
+                      subLabel={metric.subLabel}
+                      color={metric.color}
+                    />
+                  )}
                 </motion.div>
               ))}
         </motion.div>
@@ -494,7 +581,11 @@ export default function Home() {
           variants={itemVariants}
           initial='hidden'
           animate='visible'>
-          <TodayActivityCard />
+          <TodayActivityCard
+            data={todayActivity}
+            loading={todayActivityLoading}
+            error={todayActivityError}
+          />
         </motion.div>
       </main>
     </div>

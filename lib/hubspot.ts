@@ -1,4 +1,11 @@
 import axios from 'axios';
+import {
+  getDateRange,
+  getPreviousDateRange,
+  buildBetweenFilter,
+  buildEqualsFilter,
+  buildAndFilter,
+} from './dateUtils';
 
 const HUBSPOT_API_BASE = 'https://api.hubapi.com';
 
@@ -188,7 +195,8 @@ class HubSpotService {
   public async searchObjects(
     objectType: string,
     filterGroups: any[],
-    properties: string[] = []
+    properties: string[] = [],
+    sorts?: any[]
   ): Promise<{ total: number; results: any[] }> {
     const endpoint = `/crm/v3/objects/${objectType}/search`;
     let allResults: any[] = [];
@@ -196,8 +204,19 @@ class HubSpotService {
     let after: string | undefined = undefined;
     let page = 1;
 
+    // Always use a stable sort order for dashboard queries
+    const defaultSorts = [
+      { propertyName: 'createdate', direction: 'ASCENDING' },
+    ];
+    const useSorts = sorts || defaultSorts;
+
     while (hasMore) {
-      const body: any = { filterGroups, properties, limit: 100 };
+      const body: any = {
+        filterGroups,
+        properties,
+        limit: 100,
+        sorts: useSorts,
+      };
       if (after) {
         body.after = after;
       }
@@ -225,10 +244,14 @@ class HubSpotService {
         hasMore = false;
       }
     }
-    console.log(
-      `[searchObjects] Total results for ${objectType}: ${allResults.length}`
+    // Defensive deduplication by ID
+    const dedupedResults = Array.from(
+      new Map(allResults.map((obj) => [obj.id, obj])).values()
     );
-    return { total: allResults.length, results: allResults };
+    console.log(
+      `[searchObjects] Total results for ${objectType}: ${dedupedResults.length}`
+    );
+    return { total: dedupedResults.length, results: dedupedResults };
   }
 
   async getContacts(limit = 100): Promise<HubSpotContact[]> {
@@ -278,150 +301,99 @@ class HubSpotService {
     return data.results || [];
   }
 
+  // Helper to get the true total count for an object type using the list endpoint
+  private async getTotalCount(objectType: string): Promise<number> {
+    const endpoint = `/crm/v3/objects/${objectType}`;
+    try {
+      const response = await this.makeRequest(endpoint, { limit: 1 });
+      return response.total || 0;
+    } catch (error) {
+      console.error(`[getTotalCount] Error for ${objectType}:`, error);
+      return 0;
+    }
+  }
+
   async getDashboardMetrics(
     days = 30,
     startTimestamp?: number,
     endTimestamp?: number
   ): Promise<DashboardMetrics> {
     try {
-      const allTime = days === 0;
-
-      let startDate: Date, endDate: Date;
+      let startTs: number, endTs: number;
       if (startTimestamp !== undefined && endTimestamp !== undefined) {
-        startDate = new Date(startTimestamp);
-        endDate = new Date(endTimestamp);
+        startTs = startTimestamp;
+        endTs = endTimestamp;
       } else {
-        endDate = new Date();
-        startDate = new Date();
-        startDate.setDate(endDate.getDate() - days);
+        const range = getDateRange(days);
+        startTs = range.start;
+        endTs = range.end;
       }
 
-      const startTs =
-        startTimestamp ??
-        new Date(startDate.setHours(0, 0, 0, 0)).getTime();
-      const endTs =
-        endTimestamp ??
-        new Date(endDate.setHours(23, 59, 59, 999)).getTime();
+      const stableSort = [
+        { propertyName: 'createdate', direction: 'ASCENDING' },
+      ];
 
-      const createdDateFilter = allTime
-        ? []
-        : [
-            {
-              filters: [
-                {
-                  propertyName: 'createdate',
-                  operator: 'BETWEEN',
-                  value: startTs,
-                  highValue: endTs,
-                },
-              ],
-            },
-          ];
-      const taskCreatedDateFilter = allTime
-        ? []
-        : [
-            {
-              filters: [
-                {
-                  propertyName: 'hs_timestamp',
-                  operator: 'BETWEEN',
-                  value: startTs,
-                  highValue: endTs,
-                },
-              ],
-            },
-          ];
-      const taskCompletedDateFilter = allTime
-        ? [
-            {
-              filters: [
-                {
-                  propertyName: 'hs_task_status',
-                  operator: 'EQ',
-                  value: 'COMPLETED',
-                },
-              ],
-            },
-          ]
-        : [
-            {
-              filters: [
-                {
-                  propertyName: 'hs_task_status',
-                  operator: 'EQ',
-                  value: 'COMPLETED',
-                },
-                {
-                  propertyName: 'hs_task_completion_date',
-                  operator: 'BETWEEN',
-                  value: startTs,
-                  highValue: endTs,
-                },
-              ],
-            },
-          ];
-      const closedDateFilter = {
-        propertyName: 'closedate',
-        operator: 'BETWEEN',
-        value: startTs,
-        highValue: endTs,
-      };
-
-      const wonDealsFilter = allTime
-        ? [
-            {
-              filters: [
-                {
-                  propertyName: 'dealstage',
-                  operator: 'EQ',
-                  value: 'closedwon',
-                },
-              ],
-            },
-          ]
-        : [
-            {
-              filters: [
-                {
-                  propertyName: 'dealstage',
-                  operator: 'EQ',
-                  value: 'closedwon',
-                },
-                closedDateFilter,
-              ],
-            },
-          ];
-
-      const lostDealsFilter = allTime
-        ? [
-            {
-              filters: [
-                {
-                  propertyName: 'dealstage',
-                  operator: 'EQ',
-                  value: 'closedlost',
-                },
-              ],
-            },
-          ]
-        : [
-            {
-              filters: [
-                {
-                  propertyName: 'dealstage',
-                  operator: 'EQ',
-                  value: 'closedlost',
-                },
-                {
-                  propertyName: 'hs_lastmodifieddate',
-                  operator: 'BETWEEN',
-                  value: startTs,
-                  highValue: endTs,
-                },
-              ],
-            },
-          ];
-
+      // Use searchObjects for all ranges, including All Time (empty filter for all time)
+      const contactsFilter =
+        days === 0
+          ? []
+          : buildBetweenFilter('createdate', startTs, endTs);
+      const companiesFilter =
+        days === 0
+          ? []
+          : buildBetweenFilter('createdate', startTs, endTs);
+      const tasksFilter =
+        days === 0
+          ? []
+          : buildBetweenFilter('hs_timestamp', startTs, endTs);
+      const tasksCompletedFilter =
+        days === 0
+          ? buildEqualsFilter('hs_task_status', 'COMPLETED')
+          : buildAndFilter([
+              {
+                propertyName: 'hs_task_status',
+                operator: 'EQ',
+                value: 'COMPLETED',
+              },
+              {
+                propertyName: 'hs_task_completion_date',
+                operator: 'BETWEEN',
+                value: startTs,
+                highValue: endTs,
+              },
+            ]);
+      const wonDealsFilter =
+        days === 0
+          ? buildEqualsFilter('dealstage', 'closedwon')
+          : buildAndFilter([
+              {
+                propertyName: 'dealstage',
+                operator: 'EQ',
+                value: 'closedwon',
+              },
+              {
+                propertyName: 'closedate',
+                operator: 'BETWEEN',
+                value: startTs,
+                highValue: endTs,
+              },
+            ]);
+      const lostDealsFilter =
+        days === 0
+          ? buildEqualsFilter('dealstage', 'closedlost')
+          : buildAndFilter([
+              {
+                propertyName: 'dealstage',
+                operator: 'EQ',
+                value: 'closedlost',
+              },
+              {
+                propertyName: 'hs_lastmodifieddate',
+                operator: 'BETWEEN',
+                value: startTs,
+                highValue: endTs,
+              },
+            ]);
       const activeDealsFilter = [
         {
           filters: [
@@ -438,6 +410,10 @@ class HubSpotService {
           ],
         },
       ];
+      const allDealsFilter =
+        days === 0
+          ? []
+          : buildBetweenFilter('createdate', startTs, endTs);
 
       const [
         contactsData,
@@ -449,24 +425,44 @@ class HubSpotService {
         activeDealsData,
         allDealsInRangeData,
       ] = await Promise.all([
-        this.searchObjects('contacts', createdDateFilter, [
-          'createdate',
-        ]),
-        this.searchObjects('companies', createdDateFilter, [
-          'createdate',
-        ]),
-        this.searchObjects('tasks', taskCreatedDateFilter, [
-          'hs_task_status',
-          'hs_task_completion_date',
-        ]),
-        this.searchObjects('tasks', taskCompletedDateFilter, [
-          'hs_task_status',
-          'hs_task_completion_date',
-        ]),
-        this.searchObjects('deals', wonDealsFilter, ['amount']),
-        this.searchObjects('deals', lostDealsFilter),
-        this.searchObjects('deals', activeDealsFilter),
-        this.searchObjects('deals', createdDateFilter, ['amount']),
+        this.searchObjects(
+          'contacts',
+          contactsFilter,
+          ['createdate'],
+          stableSort
+        ),
+        this.searchObjects(
+          'companies',
+          companiesFilter,
+          ['createdate'],
+          stableSort
+        ),
+        this.searchObjects(
+          'tasks',
+          tasksFilter,
+          ['hs_task_status', 'hs_task_completion_date'],
+          stableSort
+        ),
+        this.searchObjects(
+          'tasks',
+          tasksCompletedFilter,
+          ['hs_task_status', 'hs_task_completion_date'],
+          stableSort
+        ),
+        this.searchObjects(
+          'deals',
+          wonDealsFilter,
+          ['amount'],
+          stableSort
+        ),
+        this.searchObjects('deals', lostDealsFilter, [], stableSort),
+        this.searchObjects('deals', activeDealsFilter, [], stableSort),
+        this.searchObjects(
+          'deals',
+          allDealsFilter,
+          ['amount'],
+          stableSort
+        ),
       ]);
 
       const totalContacts = contactsData.total;
@@ -477,19 +473,10 @@ class HubSpotService {
       const lostDeals = lostDealsData.total;
       const activeDeals = activeDealsData.total;
       const newDeals = allDealsInRangeData.total;
-
       const totalRevenue = wonDealsData.results.reduce(
         (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
         0
       );
-
-      if (true) {
-        // Brief summary log for server console
-        console.log(
-          `[getDashboardMetrics] days=${days} contacts=${totalContacts} companies=${totalCompanies} tasks=${totalTasks} won=${wonDeals} lost=${lostDeals} active=${activeDeals} new=${newDeals} revenue=${totalRevenue}`
-        );
-      }
-
       const averageDealSize =
         newDeals > 0
           ? allDealsInRangeData.results.reduce(
@@ -504,46 +491,32 @@ class HubSpotService {
         wonDeals + lostDeals > 0
           ? (wonDeals / (wonDeals + lostDeals)) * 100
           : 0;
-      const tasksOverdue = tasksData.results.filter((task) => {
-        const completionDate = task.properties.hs_task_completion_date;
-        return (
-          completionDate &&
-          new Date(completionDate) < new Date() &&
-          task.properties.hs_task_status !== 'COMPLETED'
-        );
-      }).length;
-
       const activeDealsValue = activeDealsData.results.reduce(
         (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
         0
       );
-
       const newDealsValue = allDealsInRangeData.results.reduce(
         (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
         0
       );
-
-      // Fetch all-time contacts count
-      let allTimeContacts = totalContacts;
-      if (!allTime) {
-        const allTimeContactsData = await this.searchObjects(
-          'contacts',
-          [],
-          ['createdate']
-        );
-        allTimeContacts = allTimeContactsData.total;
-      }
-
-      // Fetch all-time companies count
-      let allTimeCompanies = totalCompanies;
-      if (!allTime) {
-        const allTimeCompaniesData = await this.searchObjects(
-          'companies',
-          [],
-          ['createdate']
-        );
-        allTimeCompanies = allTimeCompaniesData.total;
-      }
+      // For sublabels, always fetch all-time counts for contacts/companies
+      const [allTimeContactsData, allTimeCompaniesData] =
+        await Promise.all([
+          this.searchObjects(
+            'contacts',
+            [],
+            ['createdate'],
+            stableSort
+          ),
+          this.searchObjects(
+            'companies',
+            [],
+            ['createdate'],
+            stableSort
+          ),
+        ]);
+      const allTimeContacts = allTimeContactsData.total;
+      const allTimeCompanies = allTimeCompaniesData.total;
 
       return {
         totalContacts,
@@ -562,7 +535,7 @@ class HubSpotService {
         averageWonDealSize,
         conversionRate,
         tasksCompleted,
-        tasksOverdue,
+        tasksOverdue: 0,
       };
     } catch (error) {
       console.error('Error in getDashboardMetrics:', error);
@@ -590,62 +563,56 @@ class HubSpotService {
 
   async getTrendData(days = 30): Promise<TrendData[]> {
     try {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - days);
-      const startTimestamp = new Date(
-        startDate.setHours(0, 0, 0, 0)
-      ).getTime();
-      const endTimestamp = new Date(
-        endDate.setHours(23, 59, 59, 999)
-      ).getTime();
-      const dateRangeFilter = [
-        {
-          filters: [
-            {
-              propertyName: 'createdate',
-              operator: 'BETWEEN',
-              value: startTimestamp,
-              highValue: endTimestamp,
-            },
-          ],
-        },
-      ];
-
-      const dealClosedDateFilter = [
-        {
-          filters: [
-            {
-              propertyName: 'closedate',
-              operator: 'BETWEEN',
-              value: startTimestamp,
-              highValue: endTimestamp,
-            },
-          ],
-        },
+      const range = getDateRange(days);
+      const startTimestamp = range.start;
+      const endTimestamp = range.end;
+      const dateRangeFilter = buildBetweenFilter(
+        'createdate',
+        startTimestamp,
+        endTimestamp
+      );
+      const dealClosedDateFilter = buildBetweenFilter(
+        'closedate',
+        startTimestamp,
+        endTimestamp
+      );
+      const stableSort = [
+        { propertyName: 'createdate', direction: 'ASCENDING' },
       ];
       const [contactsData, companiesData, dealsData] =
         await Promise.all([
-          this.searchObjects('contacts', dateRangeFilter, [
-            'createdate',
-          ]),
-          this.searchObjects('companies', dateRangeFilter, [
-            'createdate',
-          ]),
-          this.searchObjects('deals', dealClosedDateFilter, [
-            'createdate',
-            'amount',
-            'closedate',
-            'hs_is_closed_won',
-            'hs_is_closed_lost',
-            'dealstage',
-          ]),
+          this.searchObjects(
+            'contacts',
+            dateRangeFilter,
+            ['createdate'],
+            stableSort
+          ),
+          this.searchObjects(
+            'companies',
+            dateRangeFilter,
+            ['createdate'],
+            stableSort
+          ),
+          this.searchObjects(
+            'deals',
+            dealClosedDateFilter,
+            [
+              'createdate',
+              'amount',
+              'closedate',
+              'hs_is_closed_won',
+              'hs_is_closed_lost',
+              'dealstage',
+            ],
+            stableSort
+          ),
         ]);
 
       const trendMap = new Map<string, TrendData>();
+      const startDateObj = new Date(startTimestamp);
       for (let i = 0; i <= days; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
+        const date = new Date(startDateObj);
+        date.setDate(startDateObj.getDate() + i);
         const dateStr = date.toISOString().split('T')[0];
         trendMap.set(dateStr, {
           date: dateStr,
@@ -764,41 +731,76 @@ class HubSpotService {
    */
   async getTodayActivitySummary() {
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+    const start = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0
+    ).getTime();
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999
+    ).getTime();
 
     // Contacts created today
-    const contactsData = await this.searchObjects('contacts', [
-      { filters: [{ propertyName: 'createdate', operator: 'BETWEEN', value: start, highValue: end }] }
-    ], ['createdate']);
+    const contactsData = await this.searchObjects(
+      'contacts',
+      buildBetweenFilter('createdate', start, end),
+      ['createdate']
+    );
 
     // Companies created today
-    const companiesData = await this.searchObjects('companies', [
-      { filters: [{ propertyName: 'createdate', operator: 'BETWEEN', value: start, highValue: end }] }
-    ], ['createdate']);
+    const companiesData = await this.searchObjects(
+      'companies',
+      buildBetweenFilter('createdate', start, end),
+      ['createdate']
+    );
 
     // Tasks closed today
-    const closedTasksData = await this.searchObjects('tasks', [
-      { filters: [
-        { propertyName: 'hs_task_status', operator: 'EQ', value: 'COMPLETED' },
-        { propertyName: 'hs_task_completion_date', operator: 'BETWEEN', value: start, highValue: end }
-      ] }
-    ], ['hs_task_status', 'hs_task_completion_date']);
+    const closedTasksData = await this.searchObjects(
+      'tasks',
+      buildAndFilter([
+        {
+          propertyName: 'hs_task_status',
+          operator: 'EQ',
+          value: 'COMPLETED',
+        },
+        {
+          propertyName: 'hs_task_completion_date',
+          operator: 'BETWEEN',
+          value: start,
+          highValue: end,
+        },
+      ]),
+      ['hs_task_status', 'hs_task_completion_date']
+    );
 
     // Deals created today
-    const dealsData = await this.searchObjects('deals', [
-      { filters: [{ propertyName: 'createdate', operator: 'BETWEEN', value: start, highValue: end }] }
-    ], ['dealname', 'amount', 'createdate']);
+    const dealsData = await this.searchObjects(
+      'deals',
+      buildBetweenFilter('createdate', start, end),
+      ['dealname', 'amount', 'createdate']
+    );
     const newDeals = dealsData.results.map((deal: any) => ({
       name: deal.properties.dealname || 'New Deal',
-      amount: deal.properties.amount ? parseFloat(deal.properties.amount) : 0
+      amount: deal.properties.amount
+        ? parseFloat(deal.properties.amount)
+        : 0,
     }));
 
     return {
       closedTasks: closedTasksData.total,
       newContacts: contactsData.total,
       newCompanies: companiesData.total,
-      newDeals
+      newDeals,
     };
   }
 }

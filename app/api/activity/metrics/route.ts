@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { hubSpotService } from '@/lib/hubspot';
+import { getDateRange } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,9 @@ export async function GET(req: Request) {
   const daysParam = searchParams.get('days');
   const days = daysParam ? parseInt(daysParam, 10) : 30;
   const now = Date.now();
+
+  // Use shared utils for date range
+  const { start: periodStart, end: periodEnd } = getDateRange(days);
 
   // Fetch all tasks
   const allTasksData = await hubSpotService.searchObjects(

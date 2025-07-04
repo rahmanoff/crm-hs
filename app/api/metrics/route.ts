@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { hubSpotService } from '@/lib/hubspot';
+import { getDateRange, getPreviousDateRange } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,34 +9,50 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '30', 10);
 
-    // Current period
-    const now = new Date();
-    const endCurrent = now.setHours(23, 59, 59, 999);
-    const startCurrent = new Date(now);
-    startCurrent.setDate(startCurrent.getDate() - days);
-    const startCurrentTs = new Date(
-      startCurrent.setHours(0, 0, 0, 0)
-    ).getTime();
-    const endCurrentTs = endCurrent;
+    // Use shared utils for date ranges
+    const currentRange = getDateRange(days);
+    const prevRange = getPreviousDateRange(days);
 
-    // Previous period
-    const endPrev = new Date(startCurrentTs - 1);
-    const startPrev = new Date(endPrev);
-    startPrev.setDate(endPrev.getDate() - days + 1);
-    const startPrevTs = new Date(
-      startPrev.setHours(0, 0, 0, 0)
-    ).getTime();
-    const endPrevTs = new Date(
-      endPrev.setHours(23, 59, 59, 999)
-    ).getTime();
+    if (days === 0) {
+      const current = await hubSpotService.getDashboardMetrics(
+        0,
+        currentRange.start,
+        currentRange.end
+      );
+      // For All Time, previous should be all zeroes
+      const previous = {
+        totalContacts: 0,
+        allTimeContacts: 0,
+        totalCompanies: 0,
+        allTimeCompanies: 0,
+        totalDeals: 0,
+        newDealsValue: 0,
+        totalTasks: 0,
+        activeDeals: 0,
+        activeDealsValue: 0,
+        wonDeals: 0,
+        lostDeals: 0,
+        totalRevenue: 0,
+        averageDealSize: 0,
+        averageWonDealSize: 0,
+        conversionRate: 0,
+        tasksCompleted: 0,
+        tasksOverdue: 0,
+      };
+      return NextResponse.json({ current, previous });
+    }
 
     const [current, previous] = await Promise.all([
       hubSpotService.getDashboardMetrics(
         days,
-        startCurrentTs,
-        endCurrentTs
+        currentRange.start,
+        currentRange.end
       ),
-      hubSpotService.getDashboardMetrics(days, startPrevTs, endPrevTs),
+      hubSpotService.getDashboardMetrics(
+        days,
+        prevRange.start,
+        prevRange.end
+      ),
     ]);
     return NextResponse.json({ current, previous });
   } catch (error: any) {
