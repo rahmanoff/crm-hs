@@ -190,13 +190,6 @@ export default function Home() {
 
   useEffect(() => {
     const loadDashboardData = async () => {
-      console.log('[DEBUG] Current store state:', {
-        metrics: metrics ? 'loaded' : 'null',
-        loading,
-        timeRange,
-        error,
-      });
-
       setTaskLoading(true);
       setTodayActivityLoading(true);
       setTodayActivityError(null);
@@ -204,11 +197,6 @@ export default function Home() {
       try {
         // Load main metrics first - call store's fetchData directly
         await fetchData();
-        console.log('[DEBUG] Store state after fetchData:', {
-          metrics: metrics ? 'loaded' : 'null',
-          loading,
-          error,
-        });
 
         // Load task metrics and today activity in parallel
         const [taskRes, todayRes] = await Promise.all([
@@ -229,22 +217,14 @@ export default function Home() {
             createdPrev30Days: taskData.createdPrevPeriod,
           };
           setTaskMetrics(mapped);
-        } else {
-          console.error(
-            '[DEBUG] Task metrics API failed:',
-            taskRes.status
-          );
         }
 
         // Process today activity
         if (todayRes.ok) {
           const todayData = await todayRes.json();
           setTodayActivity(todayData);
-        } else {
-          setTodayActivityError("Failed to fetch today's activity");
         }
       } catch (error) {
-        console.error('[DEBUG] Error loading dashboard data:', error);
         setTodayActivityError('Failed to load dashboard data');
       } finally {
         setTaskLoading(false);
@@ -257,10 +237,6 @@ export default function Home() {
 
   useEffect(() => {
     if (metrics && timeRange === 0) {
-      console.log(
-        'Total deals (All Time):',
-        metrics.current.totalDeals
-      );
     }
   }, [metrics, timeRange]);
 
@@ -317,32 +293,11 @@ export default function Home() {
       ? 'Last 90d'
       : 'All Time';
 
-  console.log('[DEBUG] Current state:', {
-    metrics: metrics
-      ? typeof metrics === 'object'
-        ? 'object with data'
-        : typeof metrics
-      : 'null',
-    taskMetrics: taskMetrics
-      ? typeof taskMetrics === 'object'
-        ? 'object with data'
-        : typeof taskMetrics
-      : 'null',
-    taskLoading,
-    loading,
-    error,
-    timeRange,
-  });
+  // Only render metric cards when both metrics and taskMetrics are loaded
+  const allMetricsLoaded = metrics && !taskLoading && taskMetrics;
 
-  // Debug: Log when metrics data changes
-  if (metrics && metrics.current) {
-    console.log('[PAGE] Store metrics:', metrics);
-    console.log('[DEBUG] Component metrics:', {
-      totalContacts: metrics.current.totalContacts,
-      totalCompanies: metrics.current.totalCompanies,
-      totalDeals: metrics.current.totalDeals,
-    });
-  }
+  // Show main metrics even if task metrics are still loading
+  const shouldShowMainMetrics = metrics && !loading;
 
   const metricCards: MetricCardConfig[] = metrics
     ? [
@@ -450,12 +405,6 @@ export default function Home() {
     if (prev === 0 && current > 0) return 100;
     return ((current - prev) / Math.abs(prev)) * 100;
   }
-
-  // Only render metric cards when both metrics and taskMetrics are loaded
-  const allMetricsLoaded = metrics && !taskLoading && taskMetrics;
-
-  // Show main metrics even if task metrics are still loading
-  const shouldShowMainMetrics = metrics && !loading;
 
   if (error) {
     return (

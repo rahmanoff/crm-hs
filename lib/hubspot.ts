@@ -143,11 +143,6 @@ class HubSpotService {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 429 && retries > 0) {
-        console.warn(
-          `Rate limit hit. Retrying in ${
-            backoff / 1000
-          }s... (${retries} retries left)`
-        );
         await new Promise((resolve) => setTimeout(resolve, backoff));
         return this.makeRequest(
           endpoint,
@@ -156,10 +151,6 @@ class HubSpotService {
           backoff * 2
         );
       }
-      console.error(
-        'API request failed:',
-        error.response?.data || error.message
-      );
       throw error;
     }
   }
@@ -182,11 +173,6 @@ class HubSpotService {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 429 && retries > 0) {
-        console.warn(
-          `Rate limit hit on POST. Retrying in ${
-            backoff / 1000
-          }s... (${retries} retries left)`
-        );
         await new Promise((resolve) => setTimeout(resolve, backoff));
         return this.makePostRequest(
           endpoint,
@@ -195,10 +181,6 @@ class HubSpotService {
           backoff * 2
         );
       }
-      console.error(
-        'API POST request failed:',
-        error.response?.data || error.message
-      );
       throw error;
     }
   }
@@ -311,7 +293,6 @@ class HubSpotService {
       const response = await this.makeRequest(endpoint, { limit: 1 });
       return response.total || 0;
     } catch (error) {
-      console.error(`[getTotalCount] Error for ${objectType}:`, error);
       return 0;
     }
   }
@@ -345,23 +326,12 @@ class HubSpotService {
     options?: { forceRefresh?: boolean }
   ): Promise<DashboardMetrics> {
     const cacheKey = `metrics:${days}`;
-    console.log('[HUBSPOT] getDashboardMetrics:', {
-      days,
-      cacheKey,
-      forceRefresh: options?.forceRefresh,
-    });
 
     if (!options?.forceRefresh) {
       const cached = cache.get<DashboardMetrics>(cacheKey);
       if (cached) {
-        console.log('[HUBSPOT] Returning cached data for:', cacheKey);
         return cached;
       }
-    } else {
-      console.log(
-        '[HUBSPOT] Force refresh - bypassing cache for:',
-        cacheKey
-      );
     }
 
     try {
@@ -460,7 +430,6 @@ class HubSpotService {
           ? []
           : buildBetweenFilter('createdate', startTs, endTs);
 
-      console.log('[HUBSPOT] Fetching all metrics for 30 days...');
       let [
         contactsData,
         companiesData,
@@ -510,12 +479,6 @@ class HubSpotService {
           stableSort
         ),
       ]);
-      console.log('[HUBSPOT] Metrics fetch complete:', {
-        contacts: contactsData.total,
-        companies: companiesData.total,
-        tasks: tasksData.total,
-        deals: allDealsInRangeData.total,
-      });
 
       const totalContacts = contactsData.total;
       const totalCompanies = companiesData.total;
@@ -588,7 +551,6 @@ class HubSpotService {
         conversionRate,
         tasksCompleted,
         tasksOverdue: 0,
-        // Debug info
         debug: {
           contactsTotal: contactsData.total,
           companiesTotal: companiesData.total,
@@ -607,7 +569,6 @@ class HubSpotService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Error in getDashboardMetrics:', error);
       return {
         totalContacts: 0,
         allTimeContacts: 0,
@@ -740,7 +701,6 @@ class HubSpotService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Error in getTrendData:', error);
       return [];
     }
   }
@@ -805,7 +765,6 @@ class HubSpotService {
         )
         .slice(0, limit);
     } catch (error) {
-      console.error('Error in getRecentActivity:', error);
       return [];
     }
   }

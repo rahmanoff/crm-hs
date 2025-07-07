@@ -58,16 +58,8 @@ export const useCrmStore = create<CrmState>((set, get) => ({
       }
 
       const metrics = await metricsRes.json(); // { current, previous }
-      console.log('[STORE] API Response:', metrics);
       const trends = await trendsRes.json();
       const activity = await activityRes.json();
-
-      console.log(`[STORE] API Response (call ${callId}):`, {
-        totalContacts: metrics?.current?.totalContacts,
-        totalCompanies: metrics?.current?.totalCompanies,
-        totalDeals: metrics?.current?.totalDeals,
-        status: metricsRes.status,
-      });
 
       set({
         metrics,
@@ -77,7 +69,6 @@ export const useCrmStore = create<CrmState>((set, get) => ({
         isFetching: false,
       });
     } catch (error) {
-      console.error('[STORE] Error in fetchData:', error);
       const errorMessage =
         error instanceof Error
           ? error.message

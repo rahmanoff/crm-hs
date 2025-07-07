@@ -10,25 +10,9 @@ export async function GET(request: NextRequest) {
     const days = parseInt(searchParams.get('days') || '30', 10);
     const forceRefresh = searchParams.get('refresh') === '1';
 
-    console.log('[API] Starting metrics request:', {
-      days,
-      forceRefresh,
-    });
-
     // Use shared utils for date ranges
     const currentRange = getDateRange(days);
     const prevRange = getPreviousDateRange(days);
-
-    console.log('[API] Date ranges calculated:', {
-      currentRange: {
-        start: new Date(currentRange.start).toISOString(),
-        end: new Date(currentRange.end).toISOString(),
-      },
-      prevRange: {
-        start: new Date(prevRange.start).toISOString(),
-        end: new Date(prevRange.end).toISOString(),
-      },
-    });
 
     if (days === 0) {
       const current = await hubSpotService.getDashboardMetrics(
@@ -57,28 +41,10 @@ export async function GET(request: NextRequest) {
         tasksCompleted: 0,
         tasksOverdue: 0,
       };
-      // Add debug info to response
-      const debugInfo = {
-        currentRange: {
-          start: new Date(currentRange.start).toISOString(),
-          end: new Date(currentRange.end).toISOString(),
-          startTs: currentRange.start,
-          endTs: currentRange.end,
-        },
-        prevRange: {
-          start: new Date(prevRange.start).toISOString(),
-          end: new Date(prevRange.end).toISOString(),
-          startTs: prevRange.start,
-          endTs: prevRange.end,
-        },
-      };
 
-      return NextResponse.json({ current, previous, debug: debugInfo });
+      return NextResponse.json({ current, previous });
     }
 
-    console.log(
-      '[API] About to call HubSpot service for current period...'
-    );
     const [current, previous] = await Promise.all([
       hubSpotService.getDashboardMetrics(
         days,
@@ -93,28 +59,9 @@ export async function GET(request: NextRequest) {
         { forceRefresh }
       ),
     ]);
-    console.log('[API] HubSpot service calls completed');
 
-    // Add debug info to response
-    const debugInfo = {
-      currentRange: {
-        start: new Date(currentRange.start).toISOString(),
-        end: new Date(currentRange.end).toISOString(),
-        startTs: currentRange.start,
-        endTs: currentRange.end,
-      },
-      prevRange: {
-        start: new Date(prevRange.start).toISOString(),
-        end: new Date(prevRange.end).toISOString(),
-        startTs: prevRange.start,
-        endTs: prevRange.end,
-      },
-    };
-
-    return NextResponse.json({ current, previous, debug: debugInfo });
+    return NextResponse.json({ current, previous });
   } catch (error: any) {
-    console.error('Error in metrics API route:', error.message);
-
     const status = error.response?.status || 500;
     const message =
       error.response?.data?.message ||

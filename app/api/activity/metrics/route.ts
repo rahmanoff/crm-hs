@@ -12,9 +12,6 @@ export async function GET(req: Request) {
 
   try {
     // Use a simpler approach - fetch tasks with minimal properties and process in chunks
-    console.log(
-      '[activity/metrics] Starting task metrics calculation...'
-    );
 
     // Fetch all tasks (no date filter) for Open Tasks calculation
     const allTasksData = await hubSpotService.searchObjects(
@@ -26,10 +23,6 @@ export async function GET(req: Request) {
         'hs_task_completion_date',
         'hs_timestamp',
       ]
-    );
-
-    console.log(
-      `[activity/metrics] Fetched ${allTasksData.total} tasks from HubSpot`
     );
 
     // For period-based metrics, filter in-memory
@@ -80,18 +73,6 @@ export async function GET(req: Request) {
       if (status !== 'COMPLETED') openTasks++;
     }
 
-    console.log(`[activity/metrics] Counted open tasks: ${openTasks}`);
-    console.log(`[activity/metrics] Counted overdue tasks: ${overdue}`);
-    console.log(
-      `[activity/metrics] Counted created in period: ${createdInPeriod}`
-    );
-    console.log(
-      `[activity/metrics] Counted completed in period: ${completedInPeriod}`
-    );
-    console.log(
-      `[activity/metrics] Counted created in previous period: ${createdPrevPeriod}`
-    );
-
     const metrics = {
       totalTasks,
       createdInPeriod,
@@ -101,10 +82,8 @@ export async function GET(req: Request) {
       createdPrevPeriod,
     };
 
-    console.log('[activity/metrics] Final metrics:', metrics);
     return NextResponse.json(metrics);
   } catch (error) {
-    console.error('[activity/metrics] Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch task metrics', details: String(error) },
       { status: 500 }
