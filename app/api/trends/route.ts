@@ -7,7 +7,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '30', 10);
-    const trends = await hubSpotService.getTrendData(days);
+    const forceRefresh = searchParams.get('refresh') === '1';
+    const trends = await hubSpotService.getTrendData(days, {
+      forceRefresh,
+    });
     return NextResponse.json(trends);
   } catch (error: any) {
     console.error('Error in trends API route:', error.message);

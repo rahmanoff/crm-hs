@@ -183,51 +183,77 @@ export default function Home() {
     string | null
   >(null);
 
-  // Fetch all dashboard data including today activity
-  const fetchAllDashboardData = async () => {
-    setTodayActivityLoading(true);
-    setTodayActivityError(null);
-    try {
-      await fetchData(); // existing metrics/trends/tasks
-      const res = await fetch('/api/activity/today');
-      if (!res.ok) throw new Error("Failed to fetch today's activity");
-      const data = await res.json();
-      setTodayActivity(data);
-    } catch (e: any) {
-      setTodayActivityError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setTodayActivityLoading(false);
-    }
-  };
+  // Initial data load when component mounts
+  useEffect(() => {
+    fetchData();
+  }, []); // Empty dependency array - only run once on mount
 
   useEffect(() => {
-    setTaskLoading(true);
-    fetchAllDashboardData();
-    fetch(`/api/activity/metrics?days=${timeRange}`)
-      .then((res) => res.json())
-      .then((data) => {
-        // Map new property names to old ones for UI compatibility
-        const mapped = {
-          totalTasks: data.totalTasks,
-          createdLast30Days: data.createdInPeriod,
-          completedLast30Days: data.completedInPeriod,
-          overdue: data.overdue,
-          openTasks: data.openTasks,
-          createdPrev30Days: data.createdPrevPeriod,
-        };
-        if (typeof mapped.openTasks === 'undefined') {
-          mapped.openTasks =
-            mapped.totalTasks - mapped.completedLast30Days;
+    const loadDashboardData = async () => {
+      console.log('[DEBUG] Current store state:', {
+        metrics: metrics ? 'loaded' : 'null',
+        loading,
+        timeRange,
+        error,
+      });
+
+      setTaskLoading(true);
+      setTodayActivityLoading(true);
+      setTodayActivityError(null);
+
+      try {
+        // Load main metrics first - call store's fetchData directly
+        await fetchData();
+        console.log('[DEBUG] Store state after fetchData:', {
+          metrics: metrics ? 'loaded' : 'null',
+          loading,
+          error,
+        });
+
+        // Load task metrics and today activity in parallel
+        const [taskRes, todayRes] = await Promise.all([
+          fetch(`/api/activity/metrics?days=${timeRange}`),
+          fetch('/api/activity/today'),
+        ]);
+
+        // Process task metrics
+        if (taskRes.ok) {
+          const taskData = await taskRes.json();
+
+          const mapped = {
+            totalTasks: taskData.totalTasks,
+            createdLast30Days: taskData.createdInPeriod,
+            completedLast30Days: taskData.completedInPeriod,
+            overdue: taskData.overdue,
+            openTasks: taskData.openTasks,
+            createdPrev30Days: taskData.createdPrevPeriod,
+          };
+          setTaskMetrics(mapped);
+        } else {
+          console.error(
+            '[DEBUG] Task metrics API failed:',
+            taskRes.status
+          );
         }
-        setTaskMetrics(mapped);
+
+        // Process today activity
+        if (todayRes.ok) {
+          const todayData = await todayRes.json();
+          setTodayActivity(todayData);
+        } else {
+          setTodayActivityError("Failed to fetch today's activity");
+        }
+      } catch (error) {
+        console.error('[DEBUG] Error loading dashboard data:', error);
+        setTodayActivityError('Failed to load dashboard data');
+      } finally {
         setTaskLoading(false);
-        // Debug: log all task metrics if available
-        if (metrics) {
-          console.log('[UI] Dashboard metrics:', metrics);
-        }
-      })
-      .catch(() => setTaskLoading(false));
-  }, [fetchData, timeRange]);
+        setTodayActivityLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [timeRange]); // Remove fetchData from dependencies
 
   useEffect(() => {
     if (metrics && timeRange === 0) {
@@ -249,7 +275,35 @@ export default function Home() {
 
   const handleRefresh = async () => {
     try {
-      await fetchAllDashboardData();
+      // Trigger a fresh data load
+      await fetchData();
+
+      // Reload task metrics and today activity in parallel
+      const [taskRes, todayRes] = await Promise.all([
+        fetch(`/api/activity/metrics?days=${timeRange}`),
+        fetch('/api/activity/today'),
+      ]);
+
+      // Process task metrics
+      if (taskRes.ok) {
+        const taskData = await taskRes.json();
+        const mapped = {
+          totalTasks: taskData.totalTasks,
+          createdLast30Days: taskData.createdInPeriod,
+          completedLast30Days: taskData.completedInPeriod,
+          overdue: taskData.overdue,
+          openTasks: taskData.openTasks,
+          createdPrev30Days: taskData.createdPrevPeriod,
+        };
+        setTaskMetrics(mapped);
+      }
+
+      // Process today activity
+      if (todayRes.ok) {
+        const todayData = await todayRes.json();
+        setTodayActivity(todayData);
+      }
+
       toast.success('Data refreshed successfully!');
     } catch (err) {
       toast.error('Failed to refresh data.');
@@ -262,6 +316,33 @@ export default function Home() {
       : timeRange === 90
       ? 'Last 90d'
       : 'All Time';
+
+  console.log('[DEBUG] Current state:', {
+    metrics: metrics
+      ? typeof metrics === 'object'
+        ? 'object with data'
+        : typeof metrics
+      : 'null',
+    taskMetrics: taskMetrics
+      ? typeof taskMetrics === 'object'
+        ? 'object with data'
+        : typeof taskMetrics
+      : 'null',
+    taskLoading,
+    loading,
+    error,
+    timeRange,
+  });
+
+  // Debug: Log when metrics data changes
+  if (metrics && metrics.current) {
+    console.log('[PAGE] Store metrics:', metrics);
+    console.log('[DEBUG] Component metrics:', {
+      totalContacts: metrics.current.totalContacts,
+      totalCompanies: metrics.current.totalCompanies,
+      totalDeals: metrics.current.totalDeals,
+    });
+  }
 
   const metricCards: MetricCardConfig[] = metrics
     ? [
@@ -343,6 +424,7 @@ export default function Home() {
           format: 'percentage',
         },
         {
+          // Tasks card: all period-dependent values use the selected time range
           title: `New Tasks (${timeRangeLabel})`,
           value: taskMetrics ? taskMetrics.createdLast30Days : 0,
           prev: taskMetrics ? taskMetrics.createdPrev30Days : undefined,
@@ -354,6 +436,8 @@ export default function Home() {
                 `Open Tasks: ${taskMetrics.openTasks}`,
                 `Completed: ${taskMetrics.completedLast30Days}`,
               ]
+            : taskLoading
+            ? ['Calculating task metrics...']
             : undefined,
           color: 'primary',
         },
@@ -369,6 +453,9 @@ export default function Home() {
 
   // Only render metric cards when both metrics and taskMetrics are loaded
   const allMetricsLoaded = metrics && !taskLoading && taskMetrics;
+
+  // Show main metrics even if task metrics are still loading
+  const shouldShowMainMetrics = metrics && !loading;
 
   if (error) {
     return (
@@ -467,7 +554,7 @@ export default function Home() {
           initial='hidden'
           animate='visible'
           className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-6 mb-8'>
-          {!allMetricsLoaded || loading
+          {!metrics
             ? skeletonCardConfigs.map((cfg, idx) => (
                 <div
                   key={cfg.key}

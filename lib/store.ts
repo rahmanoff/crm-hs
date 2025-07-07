@@ -42,10 +42,13 @@ export const useCrmStore = create<CrmState>((set, get) => ({
     if (get().isFetching) return;
 
     const timeRange = days ?? get().timeRange;
+    const callId = Math.random().toString(36).substr(2, 9);
     set({ loading: true, error: null, isFetching: true });
     try {
+      const metricsUrl = `/api/metrics?days=${timeRange}&refresh=1&t=${Date.now()}`;
+
       const [metricsRes, trendsRes, activityRes] = await Promise.all([
-        fetch(`/api/metrics?days=${timeRange}`),
+        fetch(metricsUrl),
         fetch(`/api/trends?days=${timeRange}`),
         fetch('/api/activity'),
       ]);
@@ -55,8 +58,16 @@ export const useCrmStore = create<CrmState>((set, get) => ({
       }
 
       const metrics = await metricsRes.json(); // { current, previous }
+      console.log('[STORE] API Response:', metrics);
       const trends = await trendsRes.json();
       const activity = await activityRes.json();
+
+      console.log(`[STORE] API Response (call ${callId}):`, {
+        totalContacts: metrics?.current?.totalContacts,
+        totalCompanies: metrics?.current?.totalCompanies,
+        totalDeals: metrics?.current?.totalDeals,
+        status: metricsRes.status,
+      });
 
       set({
         metrics,
@@ -66,6 +77,7 @@ export const useCrmStore = create<CrmState>((set, get) => ({
         isFetching: false,
       });
     } catch (error) {
+      console.error('[STORE] Error in fetchData:', error);
       const errorMessage =
         error instanceof Error
           ? error.message

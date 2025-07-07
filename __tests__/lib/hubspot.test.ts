@@ -4,6 +4,9 @@ import axios from 'axios';
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
+// Mock p-limit to just run all promises immediately for test simplicity
+jest.mock('p-limit', () => () => (fn: any) => fn());
+
 describe('HubSpotService', () => {
   beforeEach(() => {
     mockedAxios.post.mockClear();
@@ -133,6 +136,46 @@ describe('HubSpotService', () => {
       expect(trendData[0]).toHaveProperty('revenue');
       expect(trendData[0]).toHaveProperty('lostRevenue');
       // Optionally, check specific values if needed
+    });
+  });
+
+  describe('searchObjects batching/concurrency', () => {
+    it('fetches and deduplicates results from multiple pages', async () => {
+      // Simulate two pages of results
+      const page1 = {
+        results: [
+          { id: '1', properties: { name: 'A' } },
+          { id: '2', properties: { name: 'B' } },
+        ],
+        paging: { next: { after: 'page2' } },
+      };
+      const page2 = {
+        results: [
+          { id: '2', properties: { name: 'B' } }, // duplicate
+          { id: '3', properties: { name: 'C' } },
+        ],
+        paging: undefined,
+      };
+      const makePostRequest = jest.spyOn(
+        hubSpotService as any,
+        'makePostRequest'
+      );
+      makePostRequest
+        .mockResolvedValueOnce(page1)
+        .mockResolvedValueOnce(page2);
+
+      const { results, total } = await hubSpotService.searchObjects(
+        'contacts',
+        [],
+        ['name']
+      );
+      expect(total).toBe(3);
+      expect(results.map((r: any) => r.id).sort()).toEqual([
+        '1',
+        '2',
+        '3',
+      ]);
+      makePostRequest.mockRestore();
     });
   });
 });

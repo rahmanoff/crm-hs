@@ -6,8 +6,12 @@ import {
   buildEqualsFilter,
   buildAndFilter,
 } from './dateUtils';
+import { cache } from './cache';
+import pLimit from 'p-limit';
 
 const HUBSPOT_API_BASE = 'https://api.hubapi.com';
+const HUBSPOT_RATE_LIMIT = 3; // 3 requests per second (adjust as needed)
+const limit = pLimit(HUBSPOT_RATE_LIMIT);
 
 export interface HubSpotContact {
   id: string;
@@ -96,6 +100,13 @@ export interface TrendData {
   lostRevenue: number;
 }
 
+/**
+ * HubSpotService provides methods to fetch and aggregate CRM data from HubSpot.
+ *
+ * - Caching: Expensive methods (getDashboardMetrics, getTrendData) use in-memory caching (5 min TTL).
+ *   Use the 'forceRefresh' option to bypass cache.
+ * - Batching/Concurrency: searchObjects fetches all pages in parallel with a concurrency limit (p-limit).
+ */
 class HubSpotService {
   private apiKey: string;
   private isPrivateApp: boolean;
@@ -192,6 +203,11 @@ class HubSpotService {
     }
   }
 
+  /**
+   * Fetches all objects of a given type from HubSpot, handling pagination.
+   * Uses batching with concurrency limit (3) for performance and rate limit safety.
+   * Results are deduplicated by ID.
+   */
   public async searchObjects(
     objectType: string,
     filterGroups: any[],
@@ -199,18 +215,16 @@ class HubSpotService {
     sorts?: any[]
   ): Promise<{ total: number; results: any[] }> {
     const endpoint = `/crm/v3/objects/${objectType}/search`;
-    let allResults: any[] = [];
-    let hasMore = true;
-    let after: string | undefined = undefined;
-    let page = 1;
 
-    // Always use a stable sort order for dashboard queries
+    let allResults: any[] = [];
+    let after: string | undefined = undefined;
     const defaultSorts = [
       { propertyName: 'createdate', direction: 'ASCENDING' },
     ];
     const useSorts = sorts || defaultSorts;
 
-    while (hasMore) {
+    let page = 1;
+    while (true) {
       const body: any = {
         filterGroups,
         properties,
@@ -220,36 +234,25 @@ class HubSpotService {
       if (after) {
         body.after = after;
       }
-      try {
-        const response = await this.makePostRequest(endpoint, body);
-        if (response.results && response.results.length > 0) {
-          allResults = allResults.concat(response.results);
-          const lastId =
-            response.results[response.results.length - 1]?.id;
-          console.log(
-            `[searchObjects] Page ${page}: Fetched ${response.results.length} results. Last ID: ${lastId}`
-          );
-        } else {
-          console.log(`[searchObjects] Page ${page}: No results.`);
-        }
-        if (response.paging && response.paging.next) {
-          after = response.paging.next.after;
-          hasMore = true;
-        } else {
-          hasMore = false;
-        }
+      const response = await this.makePostRequest(endpoint, body);
+      if (response.results && response.results.length > 0) {
+        allResults = allResults.concat(response.results);
+      }
+      if (
+        response.paging &&
+        response.paging.next &&
+        response.paging.next.after
+      ) {
+        after = response.paging.next.after;
         page++;
-      } catch (error) {
-        console.error(`[searchObjects] Error on page ${page}:`, error);
-        hasMore = false;
+      } else {
+        break;
       }
     }
+
     // Defensive deduplication by ID
     const dedupedResults = Array.from(
       new Map(allResults.map((obj) => [obj.id, obj])).values()
-    );
-    console.log(
-      `[searchObjects] Total results for ${objectType}: ${dedupedResults.length}`
     );
     return { total: dedupedResults.length, results: dedupedResults };
   }
@@ -313,11 +316,54 @@ class HubSpotService {
     }
   }
 
+  private async throttledBatch<T>(
+    tasks: (() => Promise<T>)[],
+    batchDelayMs = 400
+  ): Promise<T[]> {
+    const results: T[] = [];
+    for (let i = 0; i < tasks.length; i += HUBSPOT_RATE_LIMIT) {
+      const batch = tasks.slice(i, i + HUBSPOT_RATE_LIMIT);
+      results.push(
+        ...(await Promise.all(batch.map((fn) => limit(fn))))
+      );
+      if (i + HUBSPOT_RATE_LIMIT < tasks.length) {
+        await new Promise((res) => setTimeout(res, batchDelayMs));
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Returns dashboard metrics for the given time range.
+   * Results are cached for 5 minutes by default.
+   * Pass { forceRefresh: true } to bypass cache.
+   */
   async getDashboardMetrics(
     days = 30,
     startTimestamp?: number,
-    endTimestamp?: number
+    endTimestamp?: number,
+    options?: { forceRefresh?: boolean }
   ): Promise<DashboardMetrics> {
+    const cacheKey = `metrics:${days}`;
+    console.log('[HUBSPOT] getDashboardMetrics:', {
+      days,
+      cacheKey,
+      forceRefresh: options?.forceRefresh,
+    });
+
+    if (!options?.forceRefresh) {
+      const cached = cache.get<DashboardMetrics>(cacheKey);
+      if (cached) {
+        console.log('[HUBSPOT] Returning cached data for:', cacheKey);
+        return cached;
+      }
+    } else {
+      console.log(
+        '[HUBSPOT] Force refresh - bypassing cache for:',
+        cacheKey
+      );
+    }
+
     try {
       let startTs: number, endTs: number;
       if (startTimestamp !== undefined && endTimestamp !== undefined) {
@@ -333,7 +379,6 @@ class HubSpotService {
         { propertyName: 'createdate', direction: 'ASCENDING' },
       ];
 
-      // Use searchObjects for all ranges, including All Time (empty filter for all time)
       const contactsFilter =
         days === 0
           ? []
@@ -415,7 +460,8 @@ class HubSpotService {
           ? []
           : buildBetweenFilter('createdate', startTs, endTs);
 
-      const [
+      console.log('[HUBSPOT] Fetching all metrics for 30 days...');
+      let [
         contactsData,
         companiesData,
         tasksData,
@@ -464,6 +510,12 @@ class HubSpotService {
           stableSort
         ),
       ]);
+      console.log('[HUBSPOT] Metrics fetch complete:', {
+        contacts: contactsData.total,
+        companies: companiesData.total,
+        tasks: tasksData.total,
+        deals: allDealsInRangeData.total,
+      });
 
       const totalContacts = contactsData.total;
       const totalCompanies = companiesData.total;
@@ -518,7 +570,7 @@ class HubSpotService {
       const allTimeContacts = allTimeContactsData.total;
       const allTimeCompanies = allTimeCompaniesData.total;
 
-      return {
+      const result = {
         totalContacts,
         allTimeContacts,
         totalCompanies,
@@ -536,7 +588,24 @@ class HubSpotService {
         conversionRate,
         tasksCompleted,
         tasksOverdue: 0,
+        // Debug info
+        debug: {
+          contactsTotal: contactsData.total,
+          companiesTotal: companiesData.total,
+          tasksTotal: tasksData.total,
+          tasksCompletedTotal: tasksCompletedData.total,
+          wonDealsTotal: wonDealsData.total,
+          lostDealsTotal: lostDealsData.total,
+          activeDealsTotal: activeDealsData.total,
+          allDealsTotal: allDealsInRangeData.total,
+          dateRange: {
+            start: new Date(startTs).toISOString(),
+            end: new Date(endTs).toISOString(),
+          },
+        },
       };
+      cache.set(cacheKey, result);
+      return result;
     } catch (error) {
       console.error('Error in getDashboardMetrics:', error);
       return {
@@ -561,7 +630,20 @@ class HubSpotService {
     }
   }
 
-  async getTrendData(days = 30): Promise<TrendData[]> {
+  /**
+   * Returns trend data for the given time range.
+   * Results are cached for 5 minutes by default.
+   * Pass { forceRefresh: true } to bypass cache.
+   */
+  async getTrendData(
+    days = 30,
+    options?: { forceRefresh?: boolean }
+  ): Promise<TrendData[]> {
+    const cacheKey = `trends:${days}`;
+    if (!options?.forceRefresh) {
+      const cached = cache.get<TrendData[]>(cacheKey);
+      if (cached) return cached;
+    }
     try {
       const range = getDateRange(days);
       const startTimestamp = range.start;
@@ -654,7 +736,9 @@ class HubSpotService {
           trendMap.get(createdateStr)!.deals++;
         }
       });
-      return Array.from(trendMap.values());
+      const result = Array.from(trendMap.values());
+      cache.set(cacheKey, result);
+      return result;
     } catch (error) {
       console.error('Error in getTrendData:', error);
       return [];

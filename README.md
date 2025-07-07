@@ -19,6 +19,14 @@ A modern, interactive dashboard for HubSpot CRM that provides real-time insights
 - **Revenue Analytics**: Total revenue and average deal size
 - **Activity Feed**: Recent CRM activities
 
+### Robust Metrics Calculation (All-Time & Period-Based)
+
+- All-time and period-based metrics (e.g., Tasks) now fetch **all pages** from HubSpot, ensuring complete and accurate data for large datasets.
+- The backend handles HubSpot API pagination and rate limiting automatically.
+- This robust pattern should be used for all CRM objects (Tasks, Deals, Contacts, Companies, etc.) to ensure data integrity and accurate reporting.
+- Metrics such as "Open Tasks" or "Open Deals" are always calculated from the full dataset, not just a time slice.
+- Period-based metrics (e.g., "New", "Completed", "Closed") are filtered by the selected period in the dashboard.
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 14, React 18, TypeScript
@@ -163,6 +171,30 @@ The app includes built-in rate limiting to respect HubSpot's API limits:
 - **API response caching** to reduce API calls
 - **Optimized bundle size** with tree shaking
 - **Compression enabled** for faster loading
+- **Efficient task metrics processing** for large datasets (3000+ tasks)
+- **Optimized rendering logic** for consistent data display
+
+## 🔧 Recent Optimizations
+
+### Task Metrics Performance
+
+- **Large Dataset Handling**: Optimized for accounts with 3000+ tasks
+- **Batch Processing**: Tasks are processed in memory-efficient batches
+- **Filtered API Calls**: Uses HubSpot's filtering capabilities to reduce data transfer
+- **Progress Logging**: Server logs show processing progress for large datasets
+
+### Rendering Improvements
+
+- **Consistent Data Display**: Fixed race conditions in loading states
+- **Independent Loading States**: Task metrics load independently from main metrics
+- **Graceful Fallbacks**: Handles API failures without breaking the dashboard
+- **Real-time Updates**: Data appears as soon as it's available
+
+### API Optimizations
+
+- **Concurrent Requests**: Uses Promise.all for parallel API calls
+- **Rate Limit Handling**: Built-in retry logic with exponential backoff
+- **Error Recovery**: Graceful handling of API timeouts and failures
 
 ## 🔒 Security
 
@@ -186,8 +218,27 @@ The app includes built-in rate limiting to respect HubSpot's API limits:
    - Check logs for retry attempts
 
 3. **Empty Dashboard**
+
    - Verify your HubSpot account has data
    - Check API permissions
+
+4. **Task Metrics Showing 0 or Loading Slowly**
+
+   - **Large datasets**: For accounts with 3000+ tasks, initial load may take 30-60 seconds
+   - **Progress tracking**: Check server logs for processing progress
+   - **Memory optimization**: The app processes tasks in batches to handle large datasets
+   - **Caching**: Subsequent loads will be faster due to caching
+
+5. **Inconsistent Data Display**
+
+   - **Fixed**: Rendering logic now shows data as soon as it's available
+   - **Independent loading**: Task metrics load separately from main metrics
+   - **Refresh**: Try refreshing the page if data seems stale
+
+6. **SWC/Babel Configuration Warnings**
+   - **Normal**: These warnings appear due to Jest testing setup
+   - **No impact**: Development and production builds work correctly
+   - **Testing**: Babel is only used for Jest tests, not for the main application
 
 ### Debug Mode
 
@@ -196,6 +247,12 @@ Enable detailed logging by setting:
 ```env
 DEBUG=true
 ```
+
+**Console Debug Logs:**
+
+- `[STORE]` - Store state changes and API calls
+- `[DEBUG]` - Component state and data flow
+- `[activity/metrics]` - Task metrics processing progress
 
 ## 🤝 Contributing
 
