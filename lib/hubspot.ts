@@ -8,6 +8,7 @@ import {
 } from './dateUtils';
 import { cache } from './cache';
 import pLimit from 'p-limit';
+import { Client as HubSpotClient } from '@hubspot/api-client';
 
 const HUBSPOT_API_BASE = 'https://api.hubapi.com';
 const HUBSPOT_RATE_LIMIT = 3; // 3 requests per second (adjust as needed)
@@ -111,12 +112,15 @@ class HubSpotService {
   private apiKey: string;
   private isPrivateApp: boolean;
   private baseUrl: string;
+  private hubspotClient: HubSpotClient;
 
   constructor() {
     this.apiKey = process.env.HUBSPOT_API_KEY || '';
     this.isPrivateApp = this.apiKey.startsWith('pat-');
     this.baseUrl = HUBSPOT_API_BASE;
-
+    this.hubspotClient = new HubSpotClient({
+      accessToken: this.apiKey,
+    });
     if (!this.apiKey) {
       throw new Error(
         'HubSpot API key not found. Please set HUBSPOT_API_KEY environment variable.'
@@ -272,23 +276,36 @@ class HubSpotService {
   }
 
   async getDeals(): Promise<HubSpotDeal[]> {
-    const data = await this.searchObjects(
-      'deals',
-      [],
-      [
-        'dealname',
-        'amount',
-        'dealstage',
-        'closedate',
-        'createdate',
-        'lastmodifieddate',
-        'pipeline',
-        'hs_is_closed',
-        'hs_is_closed_won',
-        'hs_is_closed_lost',
-      ]
-    );
-    return data.results || [];
+    // Use the @hubspot/api-client SDK to fetch all deals with pagination
+    const properties = [
+      'dealname',
+      'amount',
+      'dealstage',
+      'closedate',
+      'createdate',
+      'lastmodifieddate',
+      'pipeline',
+      'hs_is_closed',
+      'hs_is_closed_won',
+      'hs_is_closed_lost',
+    ];
+    let after: string | undefined = undefined;
+    let allDeals: HubSpotDeal[] = [];
+    do {
+      const response =
+        await this.hubspotClient.crm.deals.basicApi.getPage(
+          100,
+          after,
+          properties
+        );
+      const deals = response.results.map((deal: any) => ({
+        id: deal.id,
+        properties: deal.properties,
+      }));
+      allDeals = allDeals.concat(deals);
+      after = response.paging?.next?.after;
+    } while (after);
+    return allDeals;
   }
 
   async getTasks(limit = 100): Promise<HubSpotTask[]> {
@@ -338,18 +355,50 @@ class HubSpotService {
     startTimestamp?: number,
     endTimestamp?: number,
     options?: { forceRefresh?: boolean }
-  ): Promise<DashboardMetrics> {
+  ): Promise<DashboardMetrics & { stale?: boolean }> {
     const cacheKey = `metrics:${days}`;
-
     if (!options?.forceRefresh) {
-      const cached = cache.get<DashboardMetrics>(cacheKey);
+      const cached = cache.get<DashboardMetrics & { stale?: boolean }>(
+        cacheKey
+      );
       if (cached) {
         console.log(`[DashboardMetrics] Cache hit for days=${days}`);
         return cached;
       }
     }
-
     try {
+      // Bulk fetch all objects (with pagination)
+      const [allContacts, allCompanies, allDeals, allTasks] =
+        await Promise.all([
+          this.searchObjects('contacts', [], ['createdate']),
+          this.searchObjects('companies', [], ['createdate']),
+          this.searchObjects(
+            'deals',
+            [],
+            [
+              'amount',
+              'dealstage',
+              'closedate',
+              'createdate',
+              'lastmodifieddate',
+              'pipeline',
+              'hs_is_closed',
+              'hs_is_closed_won',
+              'hs_is_closed_lost',
+            ]
+          ),
+          this.searchObjects(
+            'tasks',
+            [],
+            [
+              'hs_task_status',
+              'hs_task_completion_date',
+              'hs_timestamp',
+              'hs_createdate',
+            ]
+          ),
+        ]);
+      // Compute date ranges
       let startTs: number, endTs: number;
       if (startTimestamp !== undefined && endTimestamp !== undefined) {
         startTs = startTimestamp;
@@ -359,241 +408,140 @@ class HubSpotService {
         startTs = range.start;
         endTs = range.end;
       }
-      console.log(
-        `[DashboardMetrics] Fetching metrics for days=${days}, start=${new Date(
-          startTs
-        ).toISOString()}, end=${new Date(endTs).toISOString()}`
-      );
-
-      const stableSort = [
-        { propertyName: 'createdate', direction: 'ASCENDING' },
-      ];
-
-      const contactsFilter =
+      // Compute metrics in-memory
+      // Contacts
+      const totalContacts =
         days === 0
-          ? []
-          : buildBetweenFilter('createdate', startTs, endTs);
-      const companiesFilter =
+          ? allContacts.total
+          : allContacts.results.filter((c) => {
+              const created = c.properties.createdate
+                ? new Date(c.properties.createdate).getTime()
+                : null;
+              return created && created >= startTs && created <= endTs;
+            }).length;
+      const allTimeContacts = allContacts.total;
+      // Companies
+      const totalCompanies =
         days === 0
-          ? []
-          : buildBetweenFilter('createdate', startTs, endTs);
-      const tasksFilter =
-        days === 0
-          ? []
-          : buildBetweenFilter('hs_timestamp', startTs, endTs);
-      const tasksCompletedFilter =
-        days === 0
-          ? buildEqualsFilter('hs_task_status', 'COMPLETED')
-          : buildAndFilter([
-              {
-                propertyName: 'hs_task_status',
-                operator: 'EQ',
-                value: 'COMPLETED',
-              },
-              {
-                propertyName: 'hs_task_completion_date',
-                operator: 'BETWEEN',
-                value: startTs,
-                highValue: endTs,
-              },
-            ]);
-      const wonDealsFilter =
-        days === 0
-          ? buildEqualsFilter('dealstage', 'closedwon')
-          : buildAndFilter([
-              {
-                propertyName: 'dealstage',
-                operator: 'EQ',
-                value: 'closedwon',
-              },
-              {
-                propertyName: 'closedate',
-                operator: 'BETWEEN',
-                value: startTs,
-                highValue: endTs,
-              },
-            ]);
-      const lostDealsFilter =
-        days === 0
-          ? buildEqualsFilter('dealstage', 'closedlost')
-          : buildAndFilter([
-              {
-                propertyName: 'dealstage',
-                operator: 'EQ',
-                value: 'closedlost',
-              },
-              {
-                propertyName: 'hs_lastmodifieddate',
-                operator: 'BETWEEN',
-                value: startTs,
-                highValue: endTs,
-              },
-            ]);
-      const activeDealsFilter = [
-        {
-          filters: [
-            {
-              propertyName: 'dealstage',
-              operator: 'NEQ',
-              value: 'closedwon',
-            },
-            {
-              propertyName: 'dealstage',
-              operator: 'NEQ',
-              value: 'closedlost',
-            },
-          ],
-        },
-      ];
-      const allDealsFilter =
-        days === 0
-          ? []
-          : buildBetweenFilter('createdate', startTs, endTs);
-
-      let [
-        contactsData,
-        companiesData,
-        tasksData,
-        tasksCompletedData,
-        wonDealsData,
-        lostDealsData,
-        activeDealsData,
-        allDealsInRangeData,
-      ] = await Promise.all([
-        this.searchObjects(
-          'contacts',
-          contactsFilter,
-          ['createdate'],
-          stableSort
-        ),
-        this.searchObjects(
-          'companies',
-          companiesFilter,
-          ['createdate'],
-          stableSort
-        ),
-        this.searchObjects(
-          'tasks',
-          tasksFilter,
-          ['hs_task_status', 'hs_task_completion_date'],
-          stableSort
-        ),
-        this.searchObjects(
-          'tasks',
-          tasksCompletedFilter,
-          ['hs_task_status', 'hs_task_completion_date'],
-          stableSort
-        ),
-        this.searchObjects(
-          'deals',
-          wonDealsFilter,
-          ['amount'],
-          stableSort
-        ),
-        this.searchObjects('deals', lostDealsFilter, [], stableSort),
-        this.searchObjects('deals', activeDealsFilter, [], stableSort),
-        this.searchObjects(
-          'deals',
-          allDealsFilter,
-          ['amount'],
-          stableSort
-        ),
-      ]);
-
-      console.log(
-        `[DashboardMetrics] Results: contacts=${contactsData.total}, companies=${companiesData.total}, tasks=${tasksData.total}, tasksCompleted=${tasksCompletedData.total}, wonDeals=${wonDealsData.total}, lostDeals=${lostDealsData.total}, activeDeals=${activeDealsData.total}, allDealsInRange=${allDealsInRangeData.total}`
-      );
-
-      const totalContacts = contactsData.total;
-      const totalCompanies = companiesData.total;
-      const totalTasks = tasksData.total;
-      const tasksCompleted = tasksCompletedData.total;
-      const wonDeals = wonDealsData.total;
-      const lostDeals = lostDealsData.total;
-      const activeDeals = activeDealsData.total;
-      const newDeals = allDealsInRangeData.total;
-      const totalRevenue = wonDealsData.results.reduce(
-        (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
-        0
-      );
-      const averageDealSize =
-        newDeals > 0
-          ? allDealsInRangeData.results.reduce(
-              (sum, deal) =>
-                sum + parseFloat(deal.properties.amount || '0'),
-              0
-            ) / newDeals
+          ? allCompanies.total
+          : allCompanies.results.filter((c) => {
+              const created = c.properties.createdate
+                ? new Date(c.properties.createdate).getTime()
+                : null;
+              return created && created >= startTs && created <= endTs;
+            }).length;
+      const allTimeCompanies = allCompanies.total;
+      // Deals
+      const deals = allDeals.results;
+      const PERIOD = days * 24 * 60 * 60 * 1000;
+      const now = endTs;
+      let newDeals = 0,
+        wonDeals = 0,
+        lostDeals = 0,
+        openDeals = 0,
+        revenue = 0,
+        lostRevenue = 0,
+        wonDealSizes: number[] = [],
+        allDealSizes: number[] = [],
+        newDealsValue = 0,
+        activeDealsValue = 0;
+      for (const deal of deals) {
+        const created = deal.properties.createdate
+          ? new Date(deal.properties.createdate).getTime()
+          : null;
+        const closed = deal.properties.closedate
+          ? new Date(deal.properties.closedate).getTime()
+          : null;
+        const stage = deal.properties.dealstage;
+        const amount = deal.properties.amount
+          ? parseFloat(deal.properties.amount)
           : 0;
-      const averageWonDealSize =
-        wonDeals > 0 ? totalRevenue / wonDeals : 0;
+        if (amount) allDealSizes.push(amount);
+        if (days === 0) {
+          if (created) newDeals++;
+          if (amount && created) newDealsValue += amount;
+          if (stage === 'closedwon') {
+            wonDeals++;
+            if (amount) {
+              revenue += amount;
+              wonDealSizes.push(amount);
+            }
+          }
+          if (stage === 'closedlost') {
+            lostDeals++;
+            if (amount) lostRevenue += amount;
+          }
+        } else {
+          if (created && created >= startTs && created <= now) {
+            newDeals++;
+            if (amount) newDealsValue += amount;
+          }
+          if (
+            stage === 'closedwon' &&
+            closed &&
+            closed >= startTs &&
+            closed <= now
+          ) {
+            wonDeals++;
+            if (amount) {
+              revenue += amount;
+              wonDealSizes.push(amount);
+            }
+          }
+          if (
+            stage === 'closedlost' &&
+            closed &&
+            closed >= startTs &&
+            closed <= now
+          ) {
+            lostDeals++;
+            if (amount) lostRevenue += amount;
+          }
+        }
+        if (stage !== 'closedwon' && stage !== 'closedlost') {
+          openDeals++;
+          if (amount) activeDealsValue += amount;
+        }
+      }
+      const totalDeals = newDeals;
+      const averageDealSize = allDealSizes.length
+        ? allDealSizes.reduce((a, b) => a + b, 0) / allDealSizes.length
+        : 0;
+      const averageWonDealSize = wonDealSizes.length
+        ? wonDealSizes.reduce((a, b) => a + b, 0) / wonDealSizes.length
+        : 0;
       const conversionRate =
         wonDeals + lostDeals > 0
           ? (wonDeals / (wonDeals + lostDeals)) * 100
           : 0;
-      const activeDealsValue = activeDealsData.results.reduce(
-        (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
-        0
-      );
-      const newDealsValue = allDealsInRangeData.results.reduce(
-        (sum, deal) => sum + parseFloat(deal.properties.amount || '0'),
-        0
-      );
-      // For sublabels, always fetch all-time counts for contacts/companies
-      const [allTimeContactsData, allTimeCompaniesData] =
-        await Promise.all([
-          this.searchObjects(
-            'contacts',
-            [],
-            ['createdate'],
-            stableSort
-          ),
-          this.searchObjects(
-            'companies',
-            [],
-            ['createdate'],
-            stableSort
-          ),
-        ]);
-      const allTimeContacts = allTimeContactsData.total;
-      const allTimeCompanies = allTimeCompaniesData.total;
-
+      // Tasks
+      const tasks = allTasks.results;
+      const totalTasks = tasks.length;
+      const tasksCompleted = tasks.filter(
+        (t) =>
+          t.properties.hs_task_status === 'COMPLETED' &&
+          t.properties.hs_task_completion_date
+      ).length;
+      // Compose result
       const result = {
         totalContacts,
         allTimeContacts,
         totalCompanies,
         allTimeCompanies,
-        totalDeals: newDeals,
+        totalDeals,
         newDealsValue,
         totalTasks,
-        activeDeals,
+        activeDeals: openDeals,
         activeDealsValue,
         wonDeals,
         lostDeals,
-        totalRevenue,
+        totalRevenue: revenue,
         averageDealSize,
         averageWonDealSize,
         conversionRate,
         tasksCompleted,
         tasksOverdue: 0,
-        debug: {
-          contactsTotal: contactsData.total,
-          companiesTotal: companiesData.total,
-          tasksTotal: tasksData.total,
-          tasksCompletedTotal: tasksCompletedData.total,
-          wonDealsTotal: wonDealsData.total,
-          lostDealsTotal: lostDealsData.total,
-          activeDealsTotal: activeDealsData.total,
-          allDealsTotal: allDealsInRangeData.total,
-          dateRange: {
-            start: new Date(startTs).toISOString(),
-            end: new Date(endTs).toISOString(),
-          },
-        },
       };
-      console.log(
-        `[DashboardMetrics] Computed result for days=${days}:`,
-        result
-      );
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
@@ -601,6 +549,17 @@ class HubSpotService {
         `[DashboardMetrics] Error for days=${days}:`,
         error
       );
+      // Try to return the last cached value if available
+      const cached = cache.get<DashboardMetrics & { stale?: boolean }>(
+        cacheKey
+      );
+      if (cached) {
+        console.warn(
+          `[DashboardMetrics] Returning stale cached value for days=${days}`
+        );
+        return { ...cached, stale: true };
+      }
+      // Only return zeros if nothing is cached
       return {
         totalContacts: 0,
         allTimeContacts: 0,
@@ -619,6 +578,7 @@ class HubSpotService {
         conversionRate: 0,
         tasksCompleted: 0,
         tasksOverdue: 0,
+        stale: true,
       };
     }
   }

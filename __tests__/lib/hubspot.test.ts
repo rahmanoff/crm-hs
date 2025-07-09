@@ -1,5 +1,6 @@
 import { hubSpotService } from '@/lib/hubspot';
 import axios from 'axios';
+import { cache } from '@/lib/cache';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -7,11 +8,46 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 // Mock p-limit to just run all promises immediately for test simplicity
 jest.mock('p-limit', () => () => (fn: any) => fn());
 
+// Mock @hubspot/api-client for deals, contacts, and companies
+jest.mock('@hubspot/api-client', () => {
+  return {
+    Client: jest.fn().mockImplementation(() => ({
+      crm: {
+        deals: {
+          basicApi: {
+            getPage: jest.fn().mockResolvedValue({
+              results: [],
+              paging: undefined,
+            }),
+          },
+        },
+        contacts: {
+          basicApi: {
+            getPage: jest.fn().mockResolvedValue({
+              results: [],
+              paging: undefined,
+            }),
+          },
+        },
+        companies: {
+          basicApi: {
+            getPage: jest.fn().mockResolvedValue({
+              results: [],
+              paging: undefined,
+            }),
+          },
+        },
+      },
+    })),
+  };
+});
+
 describe('HubSpotService', () => {
   beforeEach(() => {
     mockedAxios.post.mockClear();
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    cache.flushAll();
   });
 
   afterEach(() => {

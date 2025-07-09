@@ -214,6 +214,12 @@ export default function Home() {
     fetchData();
   }, []); // Empty dependency array - only run once on mount
 
+  // NEW: Fetch metrics whenever timeRange changes
+  useEffect(() => {
+    fetchData(timeRange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRange]);
+
   useEffect(() => {
     const loadDashboardData = async () => {
       setTaskLoading(true);

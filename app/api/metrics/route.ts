@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
     const currentRange = getDateRange(days);
     const prevRange = getPreviousDateRange(days);
 
+    console.log('Current Range:', currentRange);
+    console.log('Previous Range:', prevRange);
+
     if (days === 0) {
       const current = await hubSpotService.getDashboardMetrics(
         0,

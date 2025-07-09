@@ -42,7 +42,6 @@ export const useCrmStore = create<CrmState>((set, get) => ({
     if (get().isFetching) return;
 
     const timeRange = days ?? get().timeRange;
-    const callId = Math.random().toString(36).substr(2, 9);
     set({ loading: true, error: null, isFetching: true });
     try {
       const metricsUrl = `/api/metrics?days=${timeRange}&refresh=1&t=${Date.now()}`;
@@ -67,6 +66,7 @@ export const useCrmStore = create<CrmState>((set, get) => ({
         activity,
         loading: false,
         isFetching: false,
+        error: null,
       });
     } catch (error) {
       const errorMessage =
