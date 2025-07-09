@@ -362,7 +362,6 @@ class HubSpotService {
         cacheKey
       );
       if (cached) {
-        console.log(`[DashboardMetrics] Cache hit for days=${days}`);
         return cached;
       }
     }
@@ -554,9 +553,6 @@ class HubSpotService {
         cacheKey
       );
       if (cached) {
-        console.warn(
-          `[DashboardMetrics] Returning stale cached value for days=${days}`
-        );
         return { ...cached, stale: true };
       }
       // Only return zeros if nothing is cached
@@ -601,11 +597,6 @@ class HubSpotService {
       const range = getDateRange(days);
       const startTimestamp = range.start;
       const endTimestamp = range.end;
-      console.log(
-        `[TrendData] Calculating trends for days=${days}, start=${new Date(
-          startTimestamp
-        ).toISOString()}, end=${new Date(endTimestamp).toISOString()}`
-      );
       const dateRangeFilter = buildBetweenFilter(
         'createdate',
         startTimestamp,
@@ -647,9 +638,6 @@ class HubSpotService {
             stableSort
           ),
         ]);
-      console.log(
-        `[TrendData] Contacts fetched: ${contactsData.results.length}, Companies fetched: ${companiesData.results.length}, Deals fetched: ${dealsData.results.length}`
-      );
       const trendMap = new Map<string, TrendData>();
       const startDateObj = new Date(startTimestamp);
       for (let i = 0; i <= days; i++) {
