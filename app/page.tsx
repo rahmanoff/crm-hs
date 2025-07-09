@@ -322,6 +322,12 @@ export default function Home() {
   // Only render metric cards when loading is false and metrics is available
   const shouldShowMetricCards = !loading && metrics;
 
+  // Debug: Log metrics object before rendering cards
+  if (shouldShowMetricCards) {
+    // eslint-disable-next-line no-console
+    console.log('DEBUG: metrics object in UI:', metrics);
+  }
+
   // Show skeletons for all cards while loading or if metrics is not yet available
   if (loading || !metrics) {
     return (
@@ -631,7 +637,7 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-            ) : loading ? (
+            ) : loading || !trends || trends.length === 0 ? (
               <ChartSkeleton />
             ) : (
               <TrendChart
@@ -658,7 +664,7 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-            ) : loading ? (
+            ) : loading || !trends || trends.length === 0 ? (
               <ChartSkeleton />
             ) : (
               <TrendChart

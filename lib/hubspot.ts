@@ -143,7 +143,14 @@ class HubSpotService {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 429 && retries > 0) {
-        await new Promise((resolve) => setTimeout(resolve, backoff));
+        const retryAfter = error.response.headers['retry-after'];
+        const waitTime = retryAfter
+          ? parseInt(retryAfter, 10) * 1000
+          : backoff;
+        console.warn(
+          `[HubSpot] Rate limited (GET). Retrying after ${waitTime}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
         return this.makeRequest(
           endpoint,
           params,
@@ -173,7 +180,14 @@ class HubSpotService {
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 429 && retries > 0) {
-        await new Promise((resolve) => setTimeout(resolve, backoff));
+        const retryAfter = error.response.headers['retry-after'];
+        const waitTime = retryAfter
+          ? parseInt(retryAfter, 10) * 1000
+          : backoff;
+        console.warn(
+          `[HubSpot] Rate limited (POST). Retrying after ${waitTime}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
         return this.makePostRequest(
           endpoint,
           body,
@@ -330,6 +344,7 @@ class HubSpotService {
     if (!options?.forceRefresh) {
       const cached = cache.get<DashboardMetrics>(cacheKey);
       if (cached) {
+        console.log(`[DashboardMetrics] Cache hit for days=${days}`);
         return cached;
       }
     }
@@ -344,6 +359,11 @@ class HubSpotService {
         startTs = range.start;
         endTs = range.end;
       }
+      console.log(
+        `[DashboardMetrics] Fetching metrics for days=${days}, start=${new Date(
+          startTs
+        ).toISOString()}, end=${new Date(endTs).toISOString()}`
+      );
 
       const stableSort = [
         { propertyName: 'createdate', direction: 'ASCENDING' },
@@ -480,6 +500,10 @@ class HubSpotService {
         ),
       ]);
 
+      console.log(
+        `[DashboardMetrics] Results: contacts=${contactsData.total}, companies=${companiesData.total}, tasks=${tasksData.total}, tasksCompleted=${tasksCompletedData.total}, wonDeals=${wonDealsData.total}, lostDeals=${lostDealsData.total}, activeDeals=${activeDealsData.total}, allDealsInRange=${allDealsInRangeData.total}`
+      );
+
       const totalContacts = contactsData.total;
       const totalCompanies = companiesData.total;
       const totalTasks = tasksData.total;
@@ -566,9 +590,17 @@ class HubSpotService {
           },
         },
       };
+      console.log(
+        `[DashboardMetrics] Computed result for days=${days}:`,
+        result
+      );
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
+      console.error(
+        `[DashboardMetrics] Error for days=${days}:`,
+        error
+      );
       return {
         totalContacts: 0,
         allTimeContacts: 0,
@@ -609,6 +641,11 @@ class HubSpotService {
       const range = getDateRange(days);
       const startTimestamp = range.start;
       const endTimestamp = range.end;
+      console.log(
+        `[TrendData] Calculating trends for days=${days}, start=${new Date(
+          startTimestamp
+        ).toISOString()}, end=${new Date(endTimestamp).toISOString()}`
+      );
       const dateRangeFilter = buildBetweenFilter(
         'createdate',
         startTimestamp,
@@ -650,7 +687,9 @@ class HubSpotService {
             stableSort
           ),
         ]);
-
+      console.log(
+        `[TrendData] Contacts fetched: ${contactsData.results.length}, Companies fetched: ${companiesData.results.length}, Deals fetched: ${dealsData.results.length}`
+      );
       const trendMap = new Map<string, TrendData>();
       const startDateObj = new Date(startTimestamp);
       for (let i = 0; i <= days; i++) {
@@ -666,7 +705,6 @@ class HubSpotService {
           lostRevenue: 0,
         });
       }
-
       contactsData.results.forEach((c) => {
         const dateStr = c.properties.createdate?.split('T')[0];
         if (dateStr && trendMap.has(dateStr))
@@ -701,6 +739,7 @@ class HubSpotService {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
+      console.error('[TrendData] Error calculating trends:', error);
       return [];
     }
   }

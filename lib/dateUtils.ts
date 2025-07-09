@@ -10,7 +10,12 @@ export interface DateRange {
  * If days=0, returns {start: 0, end: now}.
  */
 export function getDateRange(days: number): DateRange {
+  // Clamp 'now' to the real current date to avoid future periods
   const now = new Date();
+  const realNow = new Date(Date.now());
+  if (now.getTime() > realNow.getTime()) {
+    now.setTime(realNow.getTime());
+  }
   if (days === 0) {
     return { start: 0, end: now.getTime() };
   }

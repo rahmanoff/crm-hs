@@ -47,7 +47,7 @@ describe('HubSpotService', () => {
 
       expect(metrics.totalContacts).toBe(1);
       expect(metrics.totalCompanies).toBe(1);
-      // ...assert all other fields as needed
+      // ...existing code ...
     });
 
     it('handles empty results gracefully', async () => {
@@ -59,7 +59,7 @@ describe('HubSpotService', () => {
 
       expect(metrics.totalContacts).toBe(0);
       expect(metrics.totalCompanies).toBe(0);
-      // ...assert all other fields as needed
+      // ...existing code ...
     });
 
     it('handles API errors gracefully', async () => {
@@ -71,7 +71,7 @@ describe('HubSpotService', () => {
 
       expect(metrics.totalContacts).toBe(0);
       expect(metrics.totalCompanies).toBe(0);
-      // ...assert all other fields as needed
+      // ...existing code ...
     });
   });
 
