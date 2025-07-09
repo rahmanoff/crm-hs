@@ -154,6 +154,32 @@ function TodayActivityCard({
 }
 
 export default function Home() {
+  // Move skeletonCardConfigs and animation variants to the top of the component
+  const skeletonCardConfigs = [
+    { key: 'totalContacts', span: 'xl:col-span-3' },
+    { key: 'totalCompanies', span: 'xl:col-span-3' },
+    { key: 'totalDeals', span: 'xl:col-span-3' },
+    { key: 'activeDeals', span: 'xl:col-span-3' },
+    { key: 'totalRevenue', span: 'xl:col-span-4' },
+    { key: 'conversionRate', span: 'xl:col-span-4' },
+    { key: 'totalTasks', span: 'xl:col-span-4' },
+  ];
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+    },
+  };
   const {
     metrics,
     trends,
@@ -293,11 +319,100 @@ export default function Home() {
       ? 'Last 90d'
       : 'All Time';
 
-  // Only render metric cards when both metrics and taskMetrics are loaded
-  const allMetricsLoaded = metrics && !taskLoading && taskMetrics;
+  // Only render metric cards when loading is false and metrics is available
+  const shouldShowMetricCards = !loading && metrics;
 
-  // Show main metrics even if task metrics are still loading
-  const shouldShowMainMetrics = metrics && !loading;
+  // Show skeletons for all cards while loading or if metrics is not yet available
+  if (loading || !metrics) {
+    return (
+      <div className='min-h-screen bg-gray-50'>
+        <header className='bg-white shadow-sm border-b border-gray-200'>
+          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+            <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 gap-4 sm:gap-0'>
+              <div className='text-center sm:text-left'>
+                <h1 className='text-2xl font-bold text-gray-900'>
+                  CRM Dashboard
+                </h1>
+                <p className='text-gray-600'>
+                  Your business metrics and trends at a glance
+                </p>
+              </div>
+              <div className='flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 w-full sm:w-auto'>
+                <TimeRangeSelector />
+                <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className='btn-secondary flex items-center space-x-2 w-full sm:w-auto justify-center'>
+                  <RefreshCw
+                    className={`w-4 h-4 ${
+                      loading ? 'animate-spin' : ''
+                    }`}
+                  />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          {slowLoading && (
+            <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2'>
+              <div className='flex items-center justify-center bg-primary-50 text-primary-700 rounded-lg shadow p-3 gap-2 border border-primary-200 animate-pulse'>
+                <RefreshCw className='w-5 h-5 animate-spin text-primary-500' />
+                <span className='font-medium'>
+                  Loading all data, this may take forever...
+                </span>
+              </div>
+            </div>
+          )}
+        </header>
+        <main className='max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+          <motion.div
+            variants={containerVariants}
+            initial='hidden'
+            animate='visible'
+            className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-6 mb-8'>
+            {skeletonCardConfigs.map((cfg, idx) => (
+              <div
+                key={cfg.key}
+                className={cfg.span}>
+                <MetricCardSkeleton />
+              </div>
+            ))}
+          </motion.div>
+          {/* Trends Row: Revenue + Business Growth */}
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </div>
+          {/* Recent Activity Row */}
+          <ActivityFeedSkeleton />
+        </main>
+      </div>
+    );
+  }
+
+  // Only show 'No Data Available' if there is a real error
+  if (error) {
+    return (
+      <div className='min-h-screen bg-red-50 flex items-center justify-center'>
+        <div className='text-center p-8 bg-white rounded-lg shadow-md max-w-md mx-auto'>
+          <AlertTriangle className='w-12 h-12 text-red-500 mx-auto mb-4' />
+          <h2 className='text-2xl font-bold text-gray-800 mb-2'>
+            Dashboard Error
+          </h2>
+          <p className='text-gray-600 mb-6'>{error}</p>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className='btn-primary flex items-center space-x-2 mx-auto'>
+            <RefreshCw
+              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
+            />
+            <span>Try Again</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const metricCards: MetricCardConfig[] = metrics
     ? [
@@ -406,57 +521,6 @@ export default function Home() {
     return ((current - prev) / Math.abs(prev)) * 100;
   }
 
-  if (error) {
-    return (
-      <div className='min-h-screen bg-red-50 flex items-center justify-center'>
-        <div className='text-center p-8 bg-white rounded-lg shadow-md max-w-md mx-auto'>
-          <AlertTriangle className='w-12 h-12 text-red-500 mx-auto mb-4' />
-          <h2 className='text-2xl font-bold text-gray-800 mb-2'>
-            Dashboard Error
-          </h2>
-          <p className='text-gray-600 mb-6'>{error}</p>
-          <button
-            onClick={handleRefresh}
-            disabled={loading}
-            className='btn-primary flex items-center space-x-2 mx-auto'>
-            <RefreshCw
-              className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}
-            />
-            <span>Try Again</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-    },
-  };
-
-  const skeletonCardConfigs = [
-    { key: 'totalContacts', span: 'xl:col-span-3' },
-    { key: 'totalCompanies', span: 'xl:col-span-3' },
-    { key: 'totalDeals', span: 'xl:col-span-3' },
-    { key: 'activeDeals', span: 'xl:col-span-3' },
-    { key: 'totalRevenue', span: 'xl:col-span-4' },
-    { key: 'conversionRate', span: 'xl:col-span-4' },
-    { key: 'totalTasks', span: 'xl:col-span-4' },
-  ];
-
   return (
     <div className='min-h-screen bg-gray-50'>
       {/* App-styled slow-loading indicator below header */}
@@ -503,15 +567,8 @@ export default function Home() {
           initial='hidden'
           animate='visible'
           className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-6 mb-8'>
-          {!metrics
-            ? skeletonCardConfigs.map((cfg, idx) => (
-                <div
-                  key={cfg.key}
-                  className={cfg.span}>
-                  <MetricCardSkeleton />
-                </div>
-              ))
-            : metricCards.map((metric) => (
+          {shouldShowMetricCards
+            ? metricCards.map((metric) => (
                 <motion.div
                   key={metric.key}
                   variants={itemVariants}
@@ -553,7 +610,8 @@ export default function Home() {
                     />
                   )}
                 </motion.div>
-              ))}
+              ))
+            : null}
         </motion.div>
 
         {/* Trends Row: Revenue + Business Growth */}
