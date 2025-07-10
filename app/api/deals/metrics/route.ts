@@ -53,7 +53,29 @@ export async function GET(req: Request) {
     } else {
       metrics = getDealMetrics(deals, days, now);
     }
-    return NextResponse.json(metrics);
+
+    // Always calculate all open deals metrics (not period-filtered)
+    const allOpenDeals = deals.filter(
+      (deal) =>
+        deal.properties.dealstage !== 'closedwon' &&
+        deal.properties.dealstage !== 'closedlost'
+    );
+    const allOpenDealsCount = allOpenDeals.length;
+    const allOpenDealsSum = allOpenDeals.reduce((sum, deal) => {
+      const amount = deal.properties.amount
+        ? parseFloat(deal.properties.amount)
+        : 0;
+      return sum + amount;
+    }, 0);
+    const allOpenDealsAverage =
+      allOpenDealsCount > 0 ? allOpenDealsSum / allOpenDealsCount : 0;
+
+    return NextResponse.json({
+      ...metrics,
+      allOpenDealsCount,
+      allOpenDealsSum,
+      allOpenDealsAverage,
+    });
   } catch (error) {
     // Log the error to the server console for debugging
     console.error('Error in /api/deals/metrics:', error);

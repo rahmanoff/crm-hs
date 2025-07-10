@@ -470,16 +470,18 @@ export default function Home() {
         },
         {
           title: `Active Deals`,
-          value: metrics.current.activeDeals,
-          prev: metrics.previous.activeDeals,
+          value: metrics.allOpenDealsSum ?? 0,
+          prev: undefined, // No period comparison for all-time open deals
           icon: LineChartIcon,
           key: 'activeDeals',
-          format: 'number',
-          subLabel:
-            metrics.current.activeDealsValue !== undefined &&
-            metrics.current.activeDealsValue !== null
-              ? `Sum: $${metrics.current.activeDealsValue.toLocaleString()}`
-              : undefined,
+          format: 'currency',
+          subLabel: [
+            `Count: ${metrics.allOpenDealsCount ?? 0}`,
+            `Avg: $${(metrics.allOpenDealsAverage ?? 0).toLocaleString(
+              undefined,
+              { maximumFractionDigits: 0 }
+            )}`,
+          ],
         },
         {
           title: `Revenue (${timeRangeLabel})`,
@@ -581,7 +583,14 @@ export default function Home() {
           {shouldShowMetricCards
             ? metricCards.map((metric) => {
                 // Debug: Log props passed to each MetricCard
-                console.log('MetricCard', metric.key, 'value:', metric.value, 'prev:', metric.prev);
+                console.log(
+                  'MetricCard',
+                  metric.key,
+                  'value:',
+                  metric.value,
+                  'prev:',
+                  metric.prev
+                );
                 return (
                   <motion.div
                     key={metric.key}

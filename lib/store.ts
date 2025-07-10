@@ -12,6 +12,9 @@ interface ActivityItem {
 interface MetricsTrend {
   current: DashboardMetrics;
   previous: DashboardMetrics;
+  allOpenDealsSum?: number;
+  allOpenDealsCount?: number;
+  allOpenDealsAverage?: number;
 }
 
 interface CrmState {

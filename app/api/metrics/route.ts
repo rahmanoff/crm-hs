@@ -14,24 +14,62 @@ export async function GET(request: NextRequest) {
     const currentRange = getDateRange(days);
     const prevRange = getPreviousDateRange(days);
 
+    let current, previous;
     if (days === 0) {
-      const { current, previous } = await hubSpotService.getDashboardMetrics(
+      ({ current, previous } = await hubSpotService.getDashboardMetrics(
         0,
         currentRange.start,
         currentRange.end,
         { forceRefresh }
-      );
-      return NextResponse.json({ current, previous });
+      ));
+    } else {
+      ({ current, previous } = await hubSpotService.getDashboardMetrics(
+        days,
+        currentRange.start,
+        currentRange.end,
+        { forceRefresh }
+      ));
     }
 
-    const { current, previous } = await hubSpotService.getDashboardMetrics(
-      days,
-      currentRange.start,
-      currentRange.end,
-      { forceRefresh }
+    // Fetch all deals to calculate always-up-to-date open deals metrics
+    const allDealsData = await hubSpotService.searchObjects(
+      'deals',
+      [],
+      [
+        'createdate',
+        'closedate',
+        'dealstage',
+        'amount',
+        'lastmodifieddate',
+        'pipeline',
+        'hs_is_closed',
+        'hs_is_closed_won',
+        'hs_is_closed_lost',
+      ]
     );
+    const deals = allDealsData.results;
+    const allOpenDeals = deals.filter(
+      (deal) =>
+        deal.properties.dealstage !== 'closedwon' &&
+        deal.properties.dealstage !== 'closedlost'
+    );
+    const allOpenDealsCount = allOpenDeals.length;
+    const allOpenDealsSum = allOpenDeals.reduce((sum, deal) => {
+      const amount = deal.properties.amount
+        ? parseFloat(deal.properties.amount)
+        : 0;
+      return sum + amount;
+    }, 0);
+    const allOpenDealsAverage =
+      allOpenDealsCount > 0 ? allOpenDealsSum / allOpenDealsCount : 0;
 
-    return NextResponse.json({ current, previous });
+    return NextResponse.json({
+      current,
+      previous,
+      allOpenDealsCount,
+      allOpenDealsSum,
+      allOpenDealsAverage,
+    });
   } catch (error: any) {
     const status = error.response?.status || 500;
     const message =
