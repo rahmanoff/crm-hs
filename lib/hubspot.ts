@@ -390,54 +390,61 @@ class HubSpotService {
         created !== null && created >= prevStart && created < prevEnd;
 
       // Contacts
-      const currentContacts = allContacts.results.filter((c) =>
-        inCurrentPeriod(
-          c.properties.createdate
-            ? new Date(c.properties.createdate).getTime()
-            : null
-        )
-      );
-      const prevContacts = allContacts.results.filter((c) =>
-        inPrevPeriod(
-          c.properties.createdate
-            ? new Date(c.properties.createdate).getTime()
-            : null
-        )
-      );
-      const allTimeContacts = allContacts.total;
-      // Companies
-      const currentCompanies = allCompanies.results.filter((c) =>
-        inCurrentPeriod(
-          c.properties.createdate
-            ? new Date(c.properties.createdate).getTime()
-            : null
-        )
-      );
-      const prevCompanies = allCompanies.results.filter((c) =>
-        inPrevPeriod(
-          c.properties.createdate
-            ? new Date(c.properties.createdate).getTime()
-            : null
-        )
-      );
-      const allTimeCompanies = allCompanies.total;
+      let currentContacts, prevContacts;
+      let currentCompanies, prevCompanies;
+      let currentDeals, prevDeals;
+      if (days === 0) {
+        currentContacts = allContacts.results;
+        prevContacts = [];
+        currentCompanies = allCompanies.results;
+        prevCompanies = [];
+        currentDeals = allDeals.results;
+        prevDeals = [];
+      } else {
+        currentContacts = allContacts.results.filter((c) =>
+          inCurrentPeriod(
+            c.properties.createdate
+              ? new Date(c.properties.createdate).getTime()
+              : null
+          )
+        );
+        prevContacts = allContacts.results.filter((c) =>
+          inPrevPeriod(
+            c.properties.createdate
+              ? new Date(c.properties.createdate).getTime()
+              : null
+          )
+        );
+        currentCompanies = allCompanies.results.filter((c) =>
+          inCurrentPeriod(
+            c.properties.createdate
+              ? new Date(c.properties.createdate).getTime()
+              : null
+          )
+        );
+        prevCompanies = allCompanies.results.filter((c) =>
+          inPrevPeriod(
+            c.properties.createdate
+              ? new Date(c.properties.createdate).getTime()
+              : null
+          )
+        );
+        currentDeals = allDeals.results.filter((d) =>
+          inCurrentPeriod(
+            d.properties.createdate
+              ? new Date(d.properties.createdate).getTime()
+              : null
+          )
+        );
+        prevDeals = allDeals.results.filter((d) =>
+          inPrevPeriod(
+            d.properties.createdate
+              ? new Date(d.properties.createdate).getTime()
+              : null
+          )
+        );
+      }
       // Deals
-      const deals = allDeals.results;
-      const currentDeals = deals.filter((d) =>
-        inCurrentPeriod(
-          d.properties.createdate
-            ? new Date(d.properties.createdate).getTime()
-            : null
-        )
-      );
-      const prevDeals = deals.filter((d) =>
-        inPrevPeriod(
-          d.properties.createdate
-            ? new Date(d.properties.createdate).getTime()
-            : null
-        )
-      );
-      // Tasks
       const tasks = allTasks.results;
       // Helper to calculate metrics for a set of deals
       const calcDealMetrics = (dealSet: any[]) => {
@@ -520,9 +527,9 @@ class HubSpotService {
       // Compose metrics
       const current: DashboardMetrics = {
         totalContacts: currentContacts.length,
-        allTimeContacts,
+        allTimeContacts: allContacts.total,
         totalCompanies: currentCompanies.length,
-        allTimeCompanies,
+        allTimeCompanies: allCompanies.total,
         totalDeals: currentDealMetrics.totalDeals,
         newDealsValue: currentDealMetrics.newDealsValue,
         totalTasks,
@@ -539,9 +546,9 @@ class HubSpotService {
       };
       const previous: DashboardMetrics = {
         totalContacts: prevContacts.length,
-        allTimeContacts,
+        allTimeContacts: allContacts.total,
         totalCompanies: prevCompanies.length,
-        allTimeCompanies,
+        allTimeCompanies: allCompanies.total,
         totalDeals: prevDealMetrics.totalDeals,
         newDealsValue: prevDealMetrics.newDealsValue,
         totalTasks,
