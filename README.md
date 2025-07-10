@@ -21,9 +21,9 @@ A modern, interactive dashboard for HubSpot CRM that provides real-time insights
 
 ### Robust Metrics Calculation (All-Time & Period-Based)
 
-- All-time and period-based metrics (e.g., Tasks) now fetch **all pages** from HubSpot, ensuring complete and accurate data for large datasets.
-- The backend handles HubSpot API pagination and rate limiting automatically.
-- This robust pattern should be used for all CRM objects (Tasks, Deals, Contacts, Companies, etc.) to ensure data integrity and accurate reporting.
+- All-time and period-based metrics (e.g., Tasks, Deals) now fetch **all pages** from HubSpot using direct HTTP requests (Axios) and the HubSpot Search API, ensuring complete and accurate data for large datasets.
+- The backend handles HubSpot API pagination, batching, and rate limiting automatically—no SDK is used.
+- This robust pattern is used for all CRM objects (Tasks, Deals, Contacts, Companies, etc.) to ensure data integrity and accurate reporting.
 - Metrics such as "Open Tasks" or "Open Deals" are always calculated from the full dataset, not just a time slice.
 - Period-based metrics (e.g., "New", "Completed", "Closed") are filtered by the selected period in the dashboard.
 
@@ -32,7 +32,7 @@ A modern, interactive dashboard for HubSpot CRM that provides real-time insights
 - **Frontend**: Next.js 14, React 18, TypeScript
 - **Styling**: Tailwind CSS
 - **Charts**: Recharts
-- **HTTP Client**: Axios
+- **HTTP Client**: Axios (for all HubSpot API calls)
 - **Icons**: Lucide React
 
 ## 📋 Prerequisites
@@ -130,7 +130,7 @@ npm start
 │   ├── MetricCard.tsx     # Metric card component
 │   └── TrendChart.tsx     # Trend chart component
 ├── lib/                   # Utility libraries
-│   └── hubspot.ts         # HubSpot API service
+│   └── hubspot.ts         # HubSpot API service (HTTP-based)
 └── public/                # Static assets
 ```
 
@@ -163,6 +163,8 @@ The app includes built-in rate limiting to respect HubSpot's API limits:
   - Unit tests for business logic (mocked, no real API calls)
   - Integration tests for API endpoints (with Next.js polyfills)
   - Component tests for UI
+- **Testing Note:**
+  - All tests now mock the service layer (e.g., `searchObjects`) instead of the SDK or raw HTTP, reflecting the new HTTP-based integration.
 - **Coverage reports** are output in the terminal and as HTML in the `coverage/` directory.
 
 ## 📈 Performance
@@ -176,10 +178,11 @@ The app includes built-in rate limiting to respect HubSpot's API limits:
 
 ## 🔧 Recent Optimizations
 
-### Task Metrics Performance
+### Task & Deal Metrics Performance
 
-- **Large Dataset Handling**: Optimized for accounts with 3000+ tasks
-- **Batch Processing**: Tasks are processed in memory-efficient batches
+- **Unified HTTP Approach**: All CRM objects (Tasks, Deals, Contacts, Companies) are now fetched using direct HTTP requests and the HubSpot Search API, with robust pagination and batching. The SDK is no longer used.
+- **Large Dataset Handling**: Optimized for accounts with 3000+ tasks or deals
+- **Batch Processing**: Objects are processed in memory-efficient batches
 - **Filtered API Calls**: Uses HubSpot's filtering capabilities to reduce data transfer
 - **Progress Logging**: Server logs show processing progress for large datasets
 
@@ -195,6 +198,14 @@ The app includes built-in rate limiting to respect HubSpot's API limits:
 - **Concurrent Requests**: Uses Promise.all for parallel API calls
 - **Rate Limit Handling**: Built-in retry logic with exponential backoff
 - **Error Recovery**: Graceful handling of API timeouts and failures
+
+## 📝 Changelog
+
+### [Unreleased]
+
+- **Removed @hubspot/api-client SDK**: All HubSpot data is now fetched using direct HTTP requests (Axios) and the Search API, with robust pagination, batching, and rate limiting.
+- **Unified Service Layer**: All business logic and tests now use the HTTP-based service layer for all CRM objects.
+- **Test Updates**: Tests now mock the service layer (e.g., `searchObjects`) instead of the SDK or raw HTTP.
 
 ## 🔒 Security
 

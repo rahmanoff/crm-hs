@@ -8,7 +8,7 @@ import {
 } from './dateUtils';
 import { cache } from './cache';
 import pLimit from 'p-limit';
-import { Client as HubSpotClient } from '@hubspot/api-client';
+// REMOVE: import { Client as HubSpotClient } from '@hubspot/api-client';
 
 const HUBSPOT_API_BASE = 'https://api.hubapi.com';
 const HUBSPOT_RATE_LIMIT = 3; // 3 requests per second (adjust as needed)
@@ -112,15 +112,13 @@ class HubSpotService {
   private apiKey: string;
   private isPrivateApp: boolean;
   private baseUrl: string;
-  private hubspotClient: HubSpotClient;
+  // REMOVE: private hubspotClient: HubSpotClient;
 
   constructor() {
     this.apiKey = process.env.HUBSPOT_API_KEY || '';
     this.isPrivateApp = this.apiKey.startsWith('pat-');
     this.baseUrl = HUBSPOT_API_BASE;
-    this.hubspotClient = new HubSpotClient({
-      accessToken: this.apiKey,
-    });
+    // REMOVE: this.hubspotClient = new HubSpotClient({ accessToken: this.apiKey });
     if (!this.apiKey) {
       throw new Error(
         'HubSpot API key not found. Please set HUBSPOT_API_KEY environment variable.'
@@ -275,37 +273,14 @@ class HubSpotService {
     return data.results || [];
   }
 
-  async getDeals(): Promise<HubSpotDeal[]> {
-    // Use the @hubspot/api-client SDK to fetch all deals with pagination
-    const properties = [
-      'dealname',
-      'amount',
-      'dealstage',
-      'closedate',
-      'createdate',
-      'lastmodifieddate',
-      'pipeline',
-      'hs_is_closed',
-      'hs_is_closed_won',
-      'hs_is_closed_lost',
-    ];
-    let after: string | undefined = undefined;
-    let allDeals: HubSpotDeal[] = [];
-    do {
-      const response =
-        await this.hubspotClient.crm.deals.basicApi.getPage(
-          100,
-          after,
-          properties
-        );
-      const deals = response.results.map((deal: any) => ({
-        id: deal.id,
-        properties: deal.properties,
-      }));
-      allDeals = allDeals.concat(deals);
-      after = response.paging?.next?.after;
-    } while (after);
-    return allDeals;
+  // REPLACE SDK-based getDeals with HTTP-based version
+  async getDeals(limit = 100): Promise<HubSpotDeal[]> {
+    const data = await this.makeRequest('/crm/v3/objects/deals', {
+      limit,
+      properties:
+        'dealname,amount,dealstage,closedate,createdate,lastmodifieddate,pipeline,hs_is_closed,hs_is_closed_won,hs_is_closed_lost',
+    });
+    return data.results || [];
   }
 
   async getTasks(limit = 100): Promise<HubSpotTask[]> {
@@ -346,7 +321,7 @@ class HubSpotService {
   }
 
   /**
-   * Returns dashboard metrics for the given time range.
+   * Returns dashboard metrics for the given time range, and also calculates previous period metrics in-memory.
    * Results are cached for 5 minutes by default.
    * Pass { forceRefresh: true } to bypass cache.
    */
@@ -355,18 +330,22 @@ class HubSpotService {
     startTimestamp?: number,
     endTimestamp?: number,
     options?: { forceRefresh?: boolean }
-  ): Promise<DashboardMetrics & { stale?: boolean }> {
+  ): Promise<{
+    current: DashboardMetrics;
+    previous: DashboardMetrics;
+  }> {
     const cacheKey = `metrics:${days}`;
     if (!options?.forceRefresh) {
-      const cached = cache.get<DashboardMetrics & { stale?: boolean }>(
-        cacheKey
-      );
+      const cached = cache.get<{
+        current: DashboardMetrics;
+        previous: DashboardMetrics;
+      }>(cacheKey);
       if (cached) {
         return cached;
       }
     }
     try {
-      // Bulk fetch all objects (with pagination)
+      // Fetch all objects (no date filter)
       const [allContacts, allCompanies, allDeals, allTasks] =
         await Promise.all([
           this.searchObjects('contacts', [], ['createdate']),
@@ -398,65 +377,92 @@ class HubSpotService {
           ),
         ]);
       // Compute date ranges
-      let startTs: number, endTs: number;
-      if (startTimestamp !== undefined && endTimestamp !== undefined) {
-        startTs = startTimestamp;
-        endTs = endTimestamp;
-      } else {
-        const range = getDateRange(days);
-        startTs = range.start;
-        endTs = range.end;
-      }
-      // Compute metrics in-memory
+      const now = endTimestamp ?? Date.now();
+      const period = days * 24 * 60 * 60 * 1000;
+      const start = now - period;
+      const prevStart = start - period;
+      const prevEnd = start;
+
+      // Helper to filter by createdate
+      const inCurrentPeriod = (created: number | null) =>
+        created !== null && created >= start && created <= now;
+      const inPrevPeriod = (created: number | null) =>
+        created !== null && created >= prevStart && created < prevEnd;
+
       // Contacts
-      const totalContacts =
-        days === 0
-          ? allContacts.total
-          : allContacts.results.filter((c) => {
-              const created = c.properties.createdate
-                ? new Date(c.properties.createdate).getTime()
-                : null;
-              return created && created >= startTs && created <= endTs;
-            }).length;
+      const currentContacts = allContacts.results.filter((c) =>
+        inCurrentPeriod(
+          c.properties.createdate
+            ? new Date(c.properties.createdate).getTime()
+            : null
+        )
+      );
+      const prevContacts = allContacts.results.filter((c) =>
+        inPrevPeriod(
+          c.properties.createdate
+            ? new Date(c.properties.createdate).getTime()
+            : null
+        )
+      );
       const allTimeContacts = allContacts.total;
       // Companies
-      const totalCompanies =
-        days === 0
-          ? allCompanies.total
-          : allCompanies.results.filter((c) => {
-              const created = c.properties.createdate
-                ? new Date(c.properties.createdate).getTime()
-                : null;
-              return created && created >= startTs && created <= endTs;
-            }).length;
+      const currentCompanies = allCompanies.results.filter((c) =>
+        inCurrentPeriod(
+          c.properties.createdate
+            ? new Date(c.properties.createdate).getTime()
+            : null
+        )
+      );
+      const prevCompanies = allCompanies.results.filter((c) =>
+        inPrevPeriod(
+          c.properties.createdate
+            ? new Date(c.properties.createdate).getTime()
+            : null
+        )
+      );
       const allTimeCompanies = allCompanies.total;
       // Deals
       const deals = allDeals.results;
-      const PERIOD = days * 24 * 60 * 60 * 1000;
-      const now = endTs;
-      let newDeals = 0,
-        wonDeals = 0,
-        lostDeals = 0,
-        openDeals = 0,
-        revenue = 0,
-        lostRevenue = 0,
-        wonDealSizes: number[] = [],
-        allDealSizes: number[] = [],
-        newDealsValue = 0,
-        activeDealsValue = 0;
-      for (const deal of deals) {
-        const created = deal.properties.createdate
-          ? new Date(deal.properties.createdate).getTime()
-          : null;
-        const closed = deal.properties.closedate
-          ? new Date(deal.properties.closedate).getTime()
-          : null;
-        const stage = deal.properties.dealstage;
-        const amount = deal.properties.amount
-          ? parseFloat(deal.properties.amount)
-          : 0;
-        if (amount) allDealSizes.push(amount);
-        if (days === 0) {
+      const currentDeals = deals.filter((d) =>
+        inCurrentPeriod(
+          d.properties.createdate
+            ? new Date(d.properties.createdate).getTime()
+            : null
+        )
+      );
+      const prevDeals = deals.filter((d) =>
+        inPrevPeriod(
+          d.properties.createdate
+            ? new Date(d.properties.createdate).getTime()
+            : null
+        )
+      );
+      // Tasks
+      const tasks = allTasks.results;
+      // Helper to calculate metrics for a set of deals
+      const calcDealMetrics = (dealSet: any[]) => {
+        let newDeals = 0,
+          wonDeals = 0,
+          lostDeals = 0,
+          openDeals = 0,
+          revenue = 0,
+          lostRevenue = 0,
+          wonDealSizes: number[] = [],
+          allDealSizes: number[] = [],
+          newDealsValue = 0,
+          activeDealsValue = 0;
+        for (const deal of dealSet) {
+          const created = deal.properties.createdate
+            ? new Date(deal.properties.createdate).getTime()
+            : null;
+          const closed = deal.properties.closedate
+            ? new Date(deal.properties.closedate).getTime()
+            : null;
+          const stage = deal.properties.dealstage;
+          const amount = deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0;
+          if (amount) allDealSizes.push(amount);
           if (created) newDeals++;
           if (amount && created) newDealsValue += amount;
           if (stage === 'closedwon') {
@@ -470,93 +476,103 @@ class HubSpotService {
             lostDeals++;
             if (amount) lostRevenue += amount;
           }
-        } else {
-          if (created && created >= startTs && created <= now) {
-            newDeals++;
-            if (amount) newDealsValue += amount;
-          }
-          if (
-            stage === 'closedwon' &&
-            closed &&
-            closed >= startTs &&
-            closed <= now
-          ) {
-            wonDeals++;
-            if (amount) {
-              revenue += amount;
-              wonDealSizes.push(amount);
-            }
-          }
-          if (
-            stage === 'closedlost' &&
-            closed &&
-            closed >= startTs &&
-            closed <= now
-          ) {
-            lostDeals++;
-            if (amount) lostRevenue += amount;
+          if (stage !== 'closedwon' && stage !== 'closedlost') {
+            openDeals++;
+            if (amount) activeDealsValue += amount;
           }
         }
-        if (stage !== 'closedwon' && stage !== 'closedlost') {
-          openDeals++;
-          if (amount) activeDealsValue += amount;
-        }
-      }
-      const totalDeals = newDeals;
-      const averageDealSize = allDealSizes.length
-        ? allDealSizes.reduce((a, b) => a + b, 0) / allDealSizes.length
-        : 0;
-      const averageWonDealSize = wonDealSizes.length
-        ? wonDealSizes.reduce((a, b) => a + b, 0) / wonDealSizes.length
-        : 0;
-      const conversionRate =
-        wonDeals + lostDeals > 0
-          ? (wonDeals / (wonDeals + lostDeals)) * 100
+        const averageDealSize = allDealSizes.length
+          ? allDealSizes.reduce((a, b) => a + b, 0) /
+            allDealSizes.length
           : 0;
-      // Tasks
-      const tasks = allTasks.results;
+        const averageWonDealSize = wonDealSizes.length
+          ? wonDealSizes.reduce((a, b) => a + b, 0) /
+            wonDealSizes.length
+          : 0;
+        const conversionRate =
+          wonDeals + lostDeals > 0
+            ? (wonDeals / (wonDeals + lostDeals)) * 100
+            : 0;
+        return {
+          totalDeals: newDeals,
+          newDealsValue,
+          wonDeals,
+          lostDeals,
+          openDeals,
+          revenue,
+          lostRevenue,
+          averageDealSize,
+          averageWonDealSize,
+          activeDealsValue,
+          conversionRate,
+        };
+      };
+      // Current and previous metrics
+      const currentDealMetrics = calcDealMetrics(currentDeals);
+      const prevDealMetrics = calcDealMetrics(prevDeals);
+      // Tasks (for compatibility)
       const totalTasks = tasks.length;
       const tasksCompleted = tasks.filter(
         (t) =>
           t.properties.hs_task_status === 'COMPLETED' &&
           t.properties.hs_task_completion_date
       ).length;
-      // Compose result
-      const result = {
-        totalContacts,
+      // Compose metrics
+      const current: DashboardMetrics = {
+        totalContacts: currentContacts.length,
         allTimeContacts,
-        totalCompanies,
+        totalCompanies: currentCompanies.length,
         allTimeCompanies,
-        totalDeals,
-        newDealsValue,
+        totalDeals: currentDealMetrics.totalDeals,
+        newDealsValue: currentDealMetrics.newDealsValue,
         totalTasks,
-        activeDeals: openDeals,
-        activeDealsValue,
-        wonDeals,
-        lostDeals,
-        totalRevenue: revenue,
-        averageDealSize,
-        averageWonDealSize,
-        conversionRate,
+        activeDeals: currentDealMetrics.openDeals,
+        activeDealsValue: currentDealMetrics.activeDealsValue,
+        wonDeals: currentDealMetrics.wonDeals,
+        lostDeals: currentDealMetrics.lostDeals,
+        totalRevenue: currentDealMetrics.revenue,
+        averageDealSize: currentDealMetrics.averageDealSize,
+        averageWonDealSize: currentDealMetrics.averageWonDealSize,
+        conversionRate: currentDealMetrics.conversionRate,
         tasksCompleted,
         tasksOverdue: 0,
       };
-      cache.set(cacheKey, result);
-      return result;
+      const previous: DashboardMetrics = {
+        totalContacts: prevContacts.length,
+        allTimeContacts,
+        totalCompanies: prevCompanies.length,
+        allTimeCompanies,
+        totalDeals: prevDealMetrics.totalDeals,
+        newDealsValue: prevDealMetrics.newDealsValue,
+        totalTasks,
+        activeDeals: prevDealMetrics.openDeals,
+        activeDealsValue: prevDealMetrics.activeDealsValue,
+        wonDeals: prevDealMetrics.wonDeals,
+        lostDeals: prevDealMetrics.lostDeals,
+        totalRevenue: prevDealMetrics.revenue,
+        averageDealSize: prevDealMetrics.averageDealSize,
+        averageWonDealSize: prevDealMetrics.averageWonDealSize,
+        conversionRate: prevDealMetrics.conversionRate,
+        tasksCompleted,
+        tasksOverdue: 0,
+      };
+      cache.set(cacheKey, { current, previous });
+      return { current, previous };
     } catch (error) {
       console.error(
         `[DashboardMetrics] Error for days=${days}:`,
         error
       );
       // Try to return the last cached value if available
-      const cached = cache.get<DashboardMetrics & { stale?: boolean }>(
-        cacheKey
-      );
+      const cached = cache.get<{
+        current: DashboardMetrics;
+        previous: DashboardMetrics;
+      }>(cacheKey);
       if (cached) {
-        return { ...cached, stale: true };
+        return cached;
       }
       // Only return zeros if nothing is cached
-      return {
+      const empty: DashboardMetrics = {
         totalContacts: 0,
         allTimeContacts: 0,
         totalCompanies: 0,
@@ -574,8 +590,8 @@ class HubSpotService {
         conversionRate: 0,
         tasksCompleted: 0,
         tasksOverdue: 0,
-        stale: true,
       };
+      return { current: empty, previous: empty };
     }
   }
 

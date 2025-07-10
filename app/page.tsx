@@ -328,6 +328,11 @@ export default function Home() {
   // Only render metric cards when loading is false and metrics is available
   const shouldShowMetricCards = !loading && metrics;
 
+  // Debug: Log metrics state before rendering cards
+  if (metrics) {
+    console.log('metrics for 90 days:', metrics);
+  }
+
   // Show skeletons for all cards while loading or if metrics is not yet available
   if (loading || !metrics) {
     return (
@@ -574,49 +579,53 @@ export default function Home() {
           animate='visible'
           className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-6 mb-8'>
           {shouldShowMetricCards
-            ? metricCards.map((metric) => (
-                <motion.div
-                  key={metric.key}
-                  variants={itemVariants}
-                  className={
-                    metric.key === 'totalTasks'
-                      ? 'xl:col-span-4'
-                      : ['totalRevenue', 'conversionRate'].includes(
-                          metric.key
-                        )
-                      ? 'xl:col-span-4'
-                      : [
-                          'totalContacts',
-                          'totalCompanies',
-                          'totalDeals',
-                          'activeDeals',
-                        ].includes(metric.key)
-                      ? 'xl:col-span-3'
-                      : 'xl:col-span-3'
-                  }>
-                  {/* Show skeleton for New Tasks card if task metrics are still loading */}
-                  {metric.key === 'totalTasks' && taskLoading ? (
-                    <MetricCardSkeleton />
-                  ) : (
-                    <MetricCard
-                      title={metric.title}
-                      value={metric.value}
-                      icon={metric.icon}
-                      change={
-                        timeRange === 30 || timeRange === 90
-                          ? metric.prev !== null &&
-                            metric.prev !== undefined
-                            ? getChange(metric.value, metric.prev)
+            ? metricCards.map((metric) => {
+                // Debug: Log props passed to each MetricCard
+                console.log('MetricCard', metric.key, 'value:', metric.value, 'prev:', metric.prev);
+                return (
+                  <motion.div
+                    key={metric.key}
+                    variants={itemVariants}
+                    className={
+                      metric.key === 'totalTasks'
+                        ? 'xl:col-span-4'
+                        : ['totalRevenue', 'conversionRate'].includes(
+                            metric.key
+                          )
+                        ? 'xl:col-span-4'
+                        : [
+                            'totalContacts',
+                            'totalCompanies',
+                            'totalDeals',
+                            'activeDeals',
+                          ].includes(metric.key)
+                        ? 'xl:col-span-3'
+                        : 'xl:col-span-3'
+                    }>
+                    {/* Show skeleton for New Tasks card if task metrics are still loading */}
+                    {metric.key === 'totalTasks' && taskLoading ? (
+                      <MetricCardSkeleton />
+                    ) : (
+                      <MetricCard
+                        title={metric.title}
+                        value={metric.value}
+                        icon={metric.icon}
+                        change={
+                          timeRange === 30 || timeRange === 90
+                            ? metric.prev !== null &&
+                              metric.prev !== undefined
+                              ? getChange(metric.value, metric.prev)
+                              : undefined
                             : undefined
-                          : undefined
-                      }
-                      format={metric.format}
-                      subLabel={metric.subLabel}
-                      color={metric.color}
-                    />
-                  )}
-                </motion.div>
-              ))
+                        }
+                        format={metric.format}
+                        subLabel={metric.subLabel}
+                        color={metric.color}
+                      />
+                    )}
+                  </motion.div>
+                );
+              })
             : null}
         </motion.div>
 

@@ -15,50 +15,21 @@ export async function GET(request: NextRequest) {
     const prevRange = getPreviousDateRange(days);
 
     if (days === 0) {
-      const current = await hubSpotService.getDashboardMetrics(
+      const { current, previous } = await hubSpotService.getDashboardMetrics(
         0,
         currentRange.start,
         currentRange.end,
         { forceRefresh }
       );
-      // For All Time, previous should be all zeroes
-      const previous = {
-        totalContacts: 0,
-        allTimeContacts: 0,
-        totalCompanies: 0,
-        allTimeCompanies: 0,
-        totalDeals: 0,
-        newDealsValue: 0,
-        totalTasks: 0,
-        activeDeals: 0,
-        activeDealsValue: 0,
-        wonDeals: 0,
-        lostDeals: 0,
-        totalRevenue: 0,
-        averageDealSize: 0,
-        averageWonDealSize: 0,
-        conversionRate: 0,
-        tasksCompleted: 0,
-        tasksOverdue: 0,
-      };
-
       return NextResponse.json({ current, previous });
     }
 
-    const [current, previous] = await Promise.all([
-      hubSpotService.getDashboardMetrics(
-        days,
-        currentRange.start,
-        currentRange.end,
-        { forceRefresh }
-      ),
-      hubSpotService.getDashboardMetrics(
-        days,
-        prevRange.start,
-        prevRange.end,
-        { forceRefresh }
-      ),
-    ]);
+    const { current, previous } = await hubSpotService.getDashboardMetrics(
+      days,
+      currentRange.start,
+      currentRange.end,
+      { forceRefresh }
+    );
 
     return NextResponse.json({ current, previous });
   } catch (error: any) {

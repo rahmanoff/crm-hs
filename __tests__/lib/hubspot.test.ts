@@ -8,40 +8,6 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 // Mock p-limit to just run all promises immediately for test simplicity
 jest.mock('p-limit', () => () => (fn: any) => fn());
 
-// Mock @hubspot/api-client for deals, contacts, and companies
-jest.mock('@hubspot/api-client', () => {
-  return {
-    Client: jest.fn().mockImplementation(() => ({
-      crm: {
-        deals: {
-          basicApi: {
-            getPage: jest.fn().mockResolvedValue({
-              results: [],
-              paging: undefined,
-            }),
-          },
-        },
-        contacts: {
-          basicApi: {
-            getPage: jest.fn().mockResolvedValue({
-              results: [],
-              paging: undefined,
-            }),
-          },
-        },
-        companies: {
-          basicApi: {
-            getPage: jest.fn().mockResolvedValue({
-              results: [],
-              paging: undefined,
-            }),
-          },
-        },
-      },
-    })),
-  };
-});
-
 describe('HubSpotService', () => {
   beforeEach(() => {
     mockedAxios.post.mockClear();
@@ -58,56 +24,68 @@ describe('HubSpotService', () => {
 
   describe('getDashboardMetrics', () => {
     it('returns correct metrics for normal data', async () => {
-      (axios.post as jest.Mock)
+      // Mock searchObjects to return expected results for contacts, companies, deals, tasks
+      const searchObjectsSpy = jest.spyOn(
+        hubSpotService,
+        'searchObjects'
+      );
+      searchObjectsSpy
         .mockResolvedValueOnce({
-          data: {
-            results: [
-              { id: '1', properties: { createdate: '2023-01-01' } },
-            ],
-            paging: undefined,
-          },
+          total: 1,
+          results: [
+            { id: '1', properties: { createdate: '2023-01-01' } },
+          ],
         }) // contacts
         .mockResolvedValueOnce({
-          data: {
-            results: [
-              { id: '2', properties: { createdate: '2023-01-01' } },
-            ],
-            paging: undefined,
-          },
+          total: 1,
+          results: [
+            { id: '2', properties: { createdate: '2023-01-01' } },
+          ],
         }) // companies
-        .mockResolvedValue({
-          data: { results: [], paging: undefined },
-        }); // all others
+        .mockResolvedValueOnce({ total: 0, results: [] }) // deals
+        .mockResolvedValueOnce({ total: 0, results: [] }); // tasks
 
-      const metrics = await hubSpotService.getDashboardMetrics();
+      const metrics = await hubSpotService.getDashboardMetrics(0);
 
       expect(metrics.totalContacts).toBe(1);
+      expect(metrics.allTimeContacts).toBe(1);
       expect(metrics.totalCompanies).toBe(1);
+      expect(metrics.allTimeCompanies).toBe(1);
       // ...existing code ...
+
+      searchObjectsSpy.mockRestore();
     });
 
     it('handles empty results gracefully', async () => {
-      (axios.post as jest.Mock).mockResolvedValue({
-        data: { results: [], paging: undefined },
-      });
+      const searchObjectsSpy = jest.spyOn(
+        hubSpotService,
+        'searchObjects'
+      );
+      searchObjectsSpy.mockResolvedValue({ total: 0, results: [] }); // all calls
 
       const metrics = await hubSpotService.getDashboardMetrics();
 
       expect(metrics.totalContacts).toBe(0);
       expect(metrics.totalCompanies).toBe(0);
       // ...existing code ...
+
+      searchObjectsSpy.mockRestore();
     });
 
     it('handles API errors gracefully', async () => {
-      (axios.post as jest.Mock).mockRejectedValue(
-        new Error('API error')
+      const searchObjectsSpy = jest.spyOn(
+        hubSpotService,
+        'searchObjects'
       );
+      searchObjectsSpy.mockRejectedValue(new Error('API error'));
 
       const metrics = await hubSpotService.getDashboardMetrics();
 
       expect(metrics.totalContacts).toBe(0);
       expect(metrics.totalCompanies).toBe(0);
       // ...existing code ...
+
+      searchObjectsSpy.mockRestore();
     });
   });
 
