@@ -376,6 +376,14 @@ export default function Home() {
           )}
         </header>
         <main className='max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+          {/* Today Activity Skeleton at the top */}
+          <motion.div
+            variants={itemVariants}
+            initial='hidden'
+            animate='visible'
+            className='mb-8'>
+            <ActivityFeedSkeleton />
+          </motion.div>
           <motion.div
             variants={containerVariants}
             initial='hidden'
@@ -394,8 +402,8 @@ export default function Home() {
             <ChartSkeleton />
             <ChartSkeleton />
           </div>
-          {/* Recent Activity Row */}
-          <ActivityFeedSkeleton />
+          {/* Remove the old ActivityFeedSkeleton from the bottom */}
+          {/* <ActivityFeedSkeleton /> */}
         </main>
       </div>
     );
@@ -575,6 +583,18 @@ export default function Home() {
       </header>
 
       <main className='max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+        {/* Today Activity Card at the top */}
+        <motion.div
+          variants={itemVariants}
+          initial='hidden'
+          animate='visible'
+          className='mb-8'>
+          <TodayActivityCard
+            data={todayActivity}
+            loading={todayActivityLoading}
+            error={todayActivityError}
+          />
+        </motion.div>
         <motion.div
           variants={containerVariants}
           initial='hidden'
@@ -699,11 +719,7 @@ export default function Home() {
           variants={itemVariants}
           initial='hidden'
           animate='visible'>
-          <TodayActivityCard
-            data={todayActivity}
-            loading={todayActivityLoading}
-            error={todayActivityError}
-          />
+          {/* The old TodayActivityCard position is removed here */}
         </motion.div>
       </main>
     </div>
