@@ -871,6 +871,208 @@ class HubSpotService {
       newDeals,
     };
   }
+
+  /**
+   * Returns top N won deals in the given period, ordered by amount descending.
+   */
+  async getTopWonDeals(start: number, end: number, limit = 10) {
+    const dealsData = await this.searchObjects(
+      'deals',
+      [
+        {
+          filters: [
+            {
+              propertyName: 'dealstage',
+              operator: 'EQ',
+              value: 'closedwon',
+            },
+            {
+              propertyName: 'closedate',
+              operator: 'BETWEEN',
+              value: start,
+              highValue: end,
+            },
+          ],
+        },
+      ],
+      ['dealname', 'amount', 'createdate', 'closedate']
+    );
+    // Sort by amount descending
+    const sorted = dealsData.results
+      .filter((d: any) => d.properties.amount)
+      .sort(
+        (a: any, b: any) =>
+          parseFloat(b.properties.amount) -
+          parseFloat(a.properties.amount)
+      )
+      .slice(0, limit);
+    // Fetch associations for each deal
+    return Promise.all(
+      sorted.map(async (deal: any) => {
+        const [company, contacts] = await Promise.all([
+          this.getDealCompany(deal.id),
+          this.getDealContacts(deal.id),
+        ]);
+        return {
+          company,
+          contacts,
+          name: deal.properties.dealname || 'Deal',
+          amount: deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0,
+        };
+      })
+    );
+  }
+
+  /**
+   * Returns top N new deals (by createdate) in the given period, ordered by amount descending.
+   */
+  async getTopNewDeals(start: number, end: number, limit = 10) {
+    const dealsData = await this.searchObjects(
+      'deals',
+      [
+        {
+          filters: [
+            {
+              propertyName: 'createdate',
+              operator: 'BETWEEN',
+              value: start,
+              highValue: end,
+            },
+          ],
+        },
+      ],
+      ['dealname', 'amount', 'createdate']
+    );
+    // Sort by amount descending
+    const sorted = dealsData.results
+      .filter((d: any) => d.properties.amount)
+      .sort(
+        (a: any, b: any) =>
+          parseFloat(b.properties.amount) -
+          parseFloat(a.properties.amount)
+      )
+      .slice(0, limit);
+    // Fetch associations for each deal
+    return Promise.all(
+      sorted.map(async (deal: any) => {
+        const [company, contacts] = await Promise.all([
+          this.getDealCompany(deal.id),
+          this.getDealContacts(deal.id),
+        ]);
+        return {
+          company,
+          contacts,
+          name: deal.properties.dealname || 'Deal',
+          amount: deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0,
+        };
+      })
+    );
+  }
+
+  /**
+   * Returns top N open deals (all time), ordered by amount descending.
+   */
+  async getTopOpenDeals(_start: number, _end: number, limit = 10) {
+    const dealsData = await this.searchObjects(
+      'deals',
+      [
+        {
+          filters: [
+            {
+              propertyName: 'dealstage',
+              operator: 'NEQ',
+              value: 'closedwon',
+            },
+            {
+              propertyName: 'dealstage',
+              operator: 'NEQ',
+              value: 'closedlost',
+            },
+          ],
+        },
+      ],
+      ['dealname', 'amount', 'createdate']
+    );
+    const sorted = dealsData.results
+      .filter((d: any) => d.properties.amount)
+      .sort(
+        (a: any, b: any) =>
+          parseFloat(b.properties.amount) -
+          parseFloat(a.properties.amount)
+      )
+      .slice(0, limit);
+    return Promise.all(
+      sorted.map(async (deal: any) => {
+        const [company, contacts] = await Promise.all([
+          this.getDealCompany(deal.id),
+          this.getDealContacts(deal.id),
+        ]);
+        return {
+          company,
+          contacts,
+          name: deal.properties.dealname || 'Deal',
+          amount: deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0,
+        };
+      })
+    );
+  }
+
+  /**
+   * Returns top N lost deals in the given period, ordered by amount descending.
+   */
+  async getTopLostDeals(start: number, end: number, limit = 10) {
+    const dealsData = await this.searchObjects(
+      'deals',
+      [
+        {
+          filters: [
+            {
+              propertyName: 'dealstage',
+              operator: 'EQ',
+              value: 'closedlost',
+            },
+            {
+              propertyName: 'closedate',
+              operator: 'BETWEEN',
+              value: start,
+              highValue: end,
+            },
+          ],
+        },
+      ],
+      ['dealname', 'amount', 'createdate', 'closedate']
+    );
+    const sorted = dealsData.results
+      .filter((d: any) => d.properties.amount)
+      .sort(
+        (a: any, b: any) =>
+          parseFloat(b.properties.amount) -
+          parseFloat(a.properties.amount)
+      )
+      .slice(0, limit);
+    return Promise.all(
+      sorted.map(async (deal: any) => {
+        const [company, contacts] = await Promise.all([
+          this.getDealCompany(deal.id),
+          this.getDealContacts(deal.id),
+        ]);
+        return {
+          company,
+          contacts,
+          name: deal.properties.dealname || 'Deal',
+          amount: deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0,
+        };
+      })
+    );
+  }
 }
 
 export const hubSpotService = new HubSpotService();

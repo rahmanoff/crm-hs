@@ -28,6 +28,7 @@ import { TimeRangeSelector } from '@/components/TimeRangeSelector';
 import MetricCardSkeleton from '@/components/MetricCardSkeleton';
 import ChartSkeleton from '@/components/ChartSkeleton';
 import ActivityFeedSkeleton from '@/components/ActivityFeedSkeleton';
+import TopDealsCard from '@/components/TopDealsCard';
 
 type MetricCardConfig = {
   title: string;
@@ -203,6 +204,77 @@ export default function Home() {
     taskMetrics,
     todayActivity,
   } = useCrmStore();
+
+  const [topWonDeals, setTopWonDeals] = React.useState([]);
+  const [topNewDeals, setTopNewDeals] = React.useState([]);
+  const [topDealsLoading, setTopDealsLoading] = React.useState(false);
+  const [topDealsError, setTopDealsError] = React.useState<
+    string | null
+  >(null);
+
+  // Fetch Top Deals when timeRange changes
+  React.useEffect(() => {
+    const fetchTopDeals = async () => {
+      setTopDealsLoading(true);
+      setTopDealsError(null);
+      try {
+        const now = Date.now();
+        const period = timeRange * 24 * 60 * 60 * 1000;
+        const start = timeRange === 0 ? 0 : now - period;
+        const end = now;
+        const [wonRes, newRes] = await Promise.all([
+          fetch(`/api/deals/top-won?start=${start}&end=${end}`),
+          fetch(`/api/deals/top-new?start=${start}&end=${end}`),
+        ]);
+        if (!wonRes.ok || !newRes.ok)
+          throw new Error('Failed to fetch top deals');
+        setTopWonDeals(await wonRes.json());
+        setTopNewDeals(await newRes.json());
+      } catch (err: any) {
+        setTopDealsError(err.message || 'Failed to fetch top deals');
+      } finally {
+        setTopDealsLoading(false);
+      }
+    };
+    fetchTopDeals();
+  }, [timeRange]);
+
+  const [topOpenDeals, setTopOpenDeals] = React.useState([]);
+  const [topLostDeals, setTopLostDeals] = React.useState([]);
+  const [topOpenLostLoading, setTopOpenLostLoading] =
+    React.useState(false);
+  const [topOpenLostError, setTopOpenLostError] = React.useState<
+    string | null
+  >(null);
+
+  // Fetch Top Open/Lost Deals when timeRange changes
+  React.useEffect(() => {
+    const fetchTopOpenLost = async () => {
+      setTopOpenLostLoading(true);
+      setTopOpenLostError(null);
+      try {
+        const now = Date.now();
+        const period = timeRange * 24 * 60 * 60 * 1000;
+        const start = timeRange === 0 ? 0 : now - period;
+        const end = now;
+        const [openRes, lostRes] = await Promise.all([
+          fetch(`/api/deals/top-open?start=${start}&end=${end}`),
+          fetch(`/api/deals/top-lost?start=${start}&end=${end}`),
+        ]);
+        if (!openRes.ok || !lostRes.ok)
+          throw new Error('Failed to fetch open/lost deals');
+        setTopOpenDeals(await openRes.json());
+        setTopLostDeals(await lostRes.json());
+      } catch (err: any) {
+        setTopOpenLostError(
+          err.message || 'Failed to fetch open/lost deals'
+        );
+      } finally {
+        setTopOpenLostLoading(false);
+      }
+    };
+    fetchTopOpenLost();
+  }, [timeRange]);
 
   // Remove local state and effects for taskMetrics and todayActivity
   // Remove useState and useEffect for taskMetrics, todayActivity, taskLoading, todayActivityLoading, todayActivityError
@@ -511,6 +583,7 @@ export default function Home() {
             error={error} // Use error from store
           />
         </motion.div>
+        {/* Metric Cards and Trends */}
         <motion.div
           variants={containerVariants}
           initial='hidden'
@@ -573,7 +646,6 @@ export default function Home() {
               })
             : null}
         </motion.div>
-
         {/* Trends Row: Revenue + Business Growth */}
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
           <motion.div
@@ -630,12 +702,59 @@ export default function Home() {
             )}
           </motion.div>
         </div>
-        {/* Recent Activity Row */}
+        {/* Top Deals Section moved to bottom */}
         <motion.div
           variants={itemVariants}
           initial='hidden'
-          animate='visible'>
-          {/* The old TodayActivityCard position is removed here */}
+          animate='visible'
+          className='mb-8 w-full'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-8 w-full'>
+            <TopDealsCard
+              title='Top 10 Won Deals'
+              deals={topWonDeals}
+            />
+            <TopDealsCard
+              title='Top 10 New Deals'
+              deals={topNewDeals}
+            />
+          </div>
+          {topDealsLoading && (
+            <div className='text-center text-gray-500 mt-2'>
+              Loading top deals...
+            </div>
+          )}
+          {topDealsError && (
+            <div className='text-center text-red-500 mt-2'>
+              {topDealsError}
+            </div>
+          )}
+        </motion.div>
+        {/* Top Open/Lost Deals Section */}
+        <motion.div
+          variants={itemVariants}
+          initial='hidden'
+          animate='visible'
+          className='mb-8 w-full'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-8 w-full'>
+            <TopDealsCard
+              title='Top 10 Open Deals'
+              deals={topOpenDeals}
+            />
+            <TopDealsCard
+              title='Top 10 Lost Deals'
+              deals={topLostDeals}
+            />
+          </div>
+          {topOpenLostLoading && (
+            <div className='text-center text-gray-500 mt-2'>
+              Loading open/lost deals...
+            </div>
+          )}
+          {topOpenLostError && (
+            <div className='text-center text-red-500 mt-2'>
+              {topOpenLostError}
+            </div>
+          )}
         </motion.div>
       </main>
     </div>
