@@ -432,11 +432,15 @@ export default function Home() {
         },
         {
           title: `Close Rate (${timeRangeLabel})`,
-          value: metrics.current.conversionRate,
-          prev: metrics.previous.conversionRate,
+          value: metrics.current.valueCloseRate, // Use value-based as main
+          prev: metrics.previous.valueCloseRate,
           icon: Target,
           key: 'conversionRate',
           format: 'percentage',
+          subLabel: [
+            `Count: ${metrics.current.conversionRate.toFixed(2)}%`,
+            `Value: ${metrics.current.valueCloseRate.toFixed(2)}%`,
+          ],
         },
         {
           // Tasks card: all period-dependent values use the selected time range

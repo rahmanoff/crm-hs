@@ -15,6 +15,7 @@ export interface DealMetrics {
   averageNewDealSize: number;
   activeDealsValue: number;
   conversionRate: number;
+  valueCloseRate: number; // NEW: value-based close rate
 }
 
 /**
@@ -45,6 +46,8 @@ export function getDealMetrics(
   let createdPrevPeriod = 0;
   let newDealsValue = 0;
   let activeDealsValue = 0;
+  let sumWon = 0;
+  let sumLost = 0;
 
   for (const deal of deals) {
     const created = deal.properties.createdate
@@ -69,11 +72,15 @@ export function getDealMetrics(
         if (amount) {
           revenue += amount;
           wonDealSizes.push(amount);
+          sumWon += amount; // value-based
         }
       }
       if (stage === 'closedlost') {
         lostDeals++;
-        if (amount) lostRevenue += amount;
+        if (amount) {
+          lostRevenue += amount;
+          sumLost += amount; // value-based
+        }
       }
     } else {
       if (created && created >= start && created <= now) {
@@ -91,6 +98,7 @@ export function getDealMetrics(
         if (amount) {
           revenue += amount;
           wonDealSizes.push(amount);
+          sumWon += amount; // value-based
         }
       }
       if (
@@ -100,7 +108,10 @@ export function getDealMetrics(
         closed <= now
       ) {
         lostDeals++;
-        if (amount) lostRevenue += amount;
+        if (amount) {
+          lostRevenue += amount;
+          sumLost += amount; // value-based
+        }
       }
       if (created && created >= prevStart && created < prevEnd)
         createdPrevPeriod++;
@@ -126,6 +137,8 @@ export function getDealMetrics(
     wonDeals + lostDeals > 0
       ? (wonDeals / (wonDeals + lostDeals)) * 100
       : 0;
+  const valueCloseRate =
+    sumWon + sumLost > 0 ? (sumWon / (sumWon + sumLost)) * 100 : 0;
 
   return {
     totalDeals,
@@ -142,5 +155,6 @@ export function getDealMetrics(
     averageNewDealSize,
     activeDealsValue,
     conversionRate,
+    valueCloseRate, // NEW
   };
 }

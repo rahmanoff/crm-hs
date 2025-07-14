@@ -91,6 +91,7 @@ export interface DashboardMetrics {
   averageDealSize: number;
   averageWonDealSize: number;
   conversionRate: number;
+  valueCloseRate: number; // value-based close rate
   tasksCompleted: number;
   tasksOverdue: number;
 }
@@ -538,6 +539,7 @@ class HubSpotService {
         averageDealSize: currentDealMetrics.averageDealSize,
         averageWonDealSize: currentDealMetrics.averageWonDealSize,
         conversionRate: currentDealMetrics.conversionRate,
+        valueCloseRate: currentDealMetrics.valueCloseRate, // Add valueCloseRate
         tasksCompleted,
         tasksOverdue: 0,
       };
@@ -559,6 +561,7 @@ class HubSpotService {
         averageDealSize: prevDealMetrics.averageDealSize,
         averageWonDealSize: prevDealMetrics.averageWonDealSize,
         conversionRate: prevDealMetrics.conversionRate,
+        valueCloseRate: prevDealMetrics.valueCloseRate, // Add valueCloseRate
         tasksCompleted,
         tasksOverdue: 0,
       };
@@ -596,6 +599,7 @@ class HubSpotService {
         averageDealSize: 0,
         averageWonDealSize: 0,
         conversionRate: 0,
+        valueCloseRate: 0,
         tasksCompleted: 0,
         tasksOverdue: 0,
       };
