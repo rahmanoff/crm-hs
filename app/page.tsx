@@ -210,10 +210,6 @@ export default function Home() {
   >(null);
 
   // Initial data load when component mounts
-  useEffect(() => {
-    fetchData();
-  }, []); // Empty dependency array - only run once on mount
-
   // NEW: Fetch metrics whenever timeRange changes
   useEffect(() => {
     fetchData(timeRange);
