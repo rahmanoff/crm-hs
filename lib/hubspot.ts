@@ -295,6 +295,58 @@ class HubSpotService {
     return data.results || [];
   }
 
+  /**
+   * Fetches associated company for a deal by dealId.
+   */
+  private async getDealCompany(dealId: string): Promise<string | null> {
+    try {
+      const assoc = await this.makeRequest(
+        `/crm/v3/objects/deals/${dealId}/associations/companies`,
+        {}
+      );
+      const companyId = assoc.results?.[0]?.id;
+      if (!companyId) return null;
+      const company = await this.makeRequest(
+        `/crm/v3/objects/companies/${companyId}`,
+        { properties: 'name' }
+      );
+      return company.properties?.name || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Fetches associated contacts for a deal by dealId.
+   */
+  private async getDealContacts(dealId: string): Promise<string[]> {
+    try {
+      const assoc = await this.makeRequest(
+        `/crm/v3/objects/deals/${dealId}/associations/contacts`,
+        {}
+      );
+      const contactIds = assoc.results?.map((r: any) => r.id) || [];
+      if (contactIds.length === 0) return [];
+      // Fetch all contacts in parallel (limit concurrency)
+      const contactFetches = contactIds.map(
+        (id: string) => () =>
+          this.makeRequest(`/crm/v3/objects/contacts/${id}`, {
+            properties: 'firstname,lastname',
+          })
+      );
+      const contacts = await this.throttledBatch(contactFetches);
+      return contacts
+        .map((c: any) =>
+          `${c.properties?.firstname || ''} ${
+            c.properties?.lastname || ''
+          }`.trim()
+        )
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
   // Helper to get the true total count for an object type using the list endpoint
   private async getTotalCount(objectType: string): Promise<number> {
     const endpoint = `/crm/v3/objects/${objectType}`;
@@ -791,13 +843,23 @@ class HubSpotService {
       buildBetweenFilter('createdate', start, end),
       ['dealname', 'amount', 'createdate']
     );
-    const newDeals = dealsData.results.map((deal: any) => ({
-      name: deal.properties.dealname || 'New Deal',
-      amount: deal.properties.amount
-        ? parseFloat(deal.properties.amount)
-        : 0,
-    }));
-
+    // Fetch associations for each deal
+    const newDeals = await Promise.all(
+      dealsData.results.map(async (deal: any) => {
+        const [companyName, contactNames] = await Promise.all([
+          this.getDealCompany(deal.id),
+          this.getDealContacts(deal.id),
+        ]);
+        return {
+          company: companyName,
+          contacts: contactNames,
+          name: deal.properties.dealname || 'New Deal',
+          amount: deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0,
+        };
+      })
+    );
     return {
       closedTasks: closedTasksData.total,
       newContacts: contactsData.total,

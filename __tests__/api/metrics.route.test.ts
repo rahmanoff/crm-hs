@@ -82,3 +82,20 @@ describe('/api/metrics API route', () => {
     expect(json.error).toMatch(/internal error/i);
   });
 });
+
+describe('GET /api/activity/today', () => {
+  it('should return new deals with company, contacts, name, and amount', async () => {
+    const res = await fetch('http://localhost:3000/api/activity/today');
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.newDeals)).toBe(true);
+    if (data.newDeals.length > 0) {
+      const deal = data.newDeals[0];
+      expect(deal).toHaveProperty('company');
+      expect(deal).toHaveProperty('contacts');
+      expect(Array.isArray(deal.contacts)).toBe(true);
+      expect(deal).toHaveProperty('name');
+      expect(deal).toHaveProperty('amount');
+    }
+  });
+});

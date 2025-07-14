@@ -44,7 +44,12 @@ type TodayActivityData = {
   closedTasks: number;
   newContacts: number;
   newCompanies: number;
-  newDeals: { name: string; amount: number }[];
+  newDeals: {
+    company?: string | null;
+    contacts: string[];
+    name: string;
+    amount: number;
+  }[];
 };
 
 type TodayActivityCardProps = {
@@ -111,23 +116,34 @@ function TodayActivityCard({
         ) : (
           <>
             <ul className='divide-y divide-gray-200'>
-              {data.newDeals.map(
-                (
-                  deal: { name: string; amount: number },
-                  idx: number
-                ) => (
-                  <li
-                    key={idx}
-                    className='py-1'>
-                    <span className='text-gray-900'>
-                      {deal.name}{' '}
-                      <span className='text-gray-700 font-mono font-bold'>
-                        ${deal.amount.toLocaleString()}
+              {data.newDeals.map((deal, idx) => (
+                <li
+                  key={idx}
+                  className='py-1'>
+                  <span className='text-gray-900'>
+                    {deal.company && (
+                      <span className='font-semibold text-black'>
+                        {deal.company}
                       </span>
+                    )}
+                    {deal.company &&
+                      (deal.contacts.length > 0 || deal.name) &&
+                      ', '}
+                    {deal.contacts.length > 0 && (
+                      <span className='text-black'>
+                        {deal.contacts.join(', ')}
+                      </span>
+                    )}
+                    {deal.contacts.length > 0 && deal.name && ', '}
+                    <span className='text-gray-900'>
+                      {deal.name}
+                    </span>{' '}
+                    <span className='text-gray-700 font-mono font-bold'>
+                      ${deal.amount.toLocaleString()}
                     </span>
-                  </li>
-                )
-              )}
+                  </span>
+                </li>
+              ))}
             </ul>
             {data.newDeals.length > 1 && (
               <div className='mt-2 text-right'>
@@ -137,11 +153,7 @@ function TodayActivityCard({
                 <span className='text-black font-bold font-mono'>
                   $
                   {data.newDeals
-                    .reduce(
-                      (sum: number, d: { amount: number }) =>
-                        sum + d.amount,
-                      0
-                    )
+                    .reduce((sum, d) => sum + d.amount, 0)
                     .toLocaleString()}
                 </span>
               </div>
