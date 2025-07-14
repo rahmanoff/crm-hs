@@ -438,8 +438,8 @@ export default function Home() {
           key: 'conversionRate',
           format: 'percentage',
           subLabel: [
-            `Count: ${metrics.current.conversionRate.toFixed(2)}%`,
             `Value: ${metrics.current.valueCloseRate.toFixed(2)}%`,
+            `Count: ${metrics.current.conversionRate.toFixed(2)}%`,
           ],
         },
         {
