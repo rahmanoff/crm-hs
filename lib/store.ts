@@ -89,7 +89,15 @@ export const useCrmStore = create<CrmState & { fetchToken?: number }>(
         const metrics = await metricsRes.json(); // { current, previous }
         const trends = await trendsRes.json();
         const activity = await activityRes.json();
-        const taskMetrics = await taskMetricsRes.json();
+        const taskMetricsRaw = await taskMetricsRes.json();
+        const taskMetrics = {
+          totalTasks: taskMetricsRaw.totalTasks,
+          createdLast30Days: taskMetricsRaw.createdInPeriod,
+          completedLast30Days: taskMetricsRaw.completedInPeriod,
+          overdue: taskMetricsRaw.overdue,
+          openTasks: taskMetricsRaw.openTasks,
+          createdPrev30Days: taskMetricsRaw.createdPrevPeriod,
+        };
         const todayActivity = await todayActivityRes.json();
 
         // Only update state if this is the latest fetch

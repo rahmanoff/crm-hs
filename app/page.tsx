@@ -188,94 +188,20 @@ export default function Home() {
     error,
     fetchData,
     timeRange,
+    taskMetrics,
+    todayActivity,
   } = useCrmStore();
 
-  const [taskMetrics, setTaskMetrics] = useState<{
-    createdLast30Days: number;
-    totalTasks: number;
-    completedLast30Days: number;
-    overdue: number;
-    openTasks?: number;
-    createdPrev30Days?: number;
-  } | null>(null);
-  const [taskLoading, setTaskLoading] = useState(false);
-  const [slowLoading, setSlowLoading] = useState(false);
+  // Remove local state and effects for taskMetrics and todayActivity
+  // Remove useState and useEffect for taskMetrics, todayActivity, taskLoading, todayActivityLoading, todayActivityError
 
-  // Today Activity state
-  const [todayActivity, setTodayActivity] = useState(null);
-  const [todayActivityLoading, setTodayActivityLoading] =
-    useState(false);
-  const [todayActivityError, setTodayActivityError] = useState<
-    string | null
-  >(null);
+  // Remove loadDashboardData and handleRefresh fetches for /api/activity/metrics and /api/activity/today
+  // Use taskMetrics and todayActivity from the store in the UI
 
-  // Initial data load when component mounts
-  // NEW: Fetch metrics whenever timeRange changes
   useEffect(() => {
     fetchData(timeRange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
-
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      setTaskLoading(true);
-      setTodayActivityLoading(true);
-      setTodayActivityError(null);
-
-      try {
-        // Load main metrics first - call store's fetchData directly
-        await fetchData();
-
-        // Load task metrics and today activity in parallel
-        const [taskRes, todayRes] = await Promise.all([
-          fetch(`/api/activity/metrics?days=${timeRange}`),
-          fetch('/api/activity/today'),
-        ]);
-
-        // Process task metrics
-        if (taskRes.ok) {
-          const taskData = await taskRes.json();
-
-          const mapped = {
-            totalTasks: taskData.totalTasks,
-            createdLast30Days: taskData.createdInPeriod,
-            completedLast30Days: taskData.completedInPeriod,
-            overdue: taskData.overdue,
-            openTasks: taskData.openTasks,
-            createdPrev30Days: taskData.createdPrevPeriod,
-          };
-          setTaskMetrics(mapped);
-        }
-
-        // Process today activity
-        if (todayRes.ok) {
-          const todayData = await todayRes.json();
-          setTodayActivity(todayData);
-        }
-      } catch (error) {
-        setTodayActivityError('Failed to load dashboard data');
-      } finally {
-        setTaskLoading(false);
-        setTodayActivityLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, [timeRange]); // Remove fetchData from dependencies
-
-  useEffect(() => {
-    if (metrics && timeRange === 0) {
-    }
-  }, [metrics, timeRange]);
-
-  useEffect(() => {
-    if (loading) {
-      const timer = setTimeout(() => setSlowLoading(true), 2000);
-      return () => clearTimeout(timer);
-    } else {
-      setSlowLoading(false);
-    }
-  }, [loading]);
 
   const handleRefresh = async () => {
     try {
@@ -299,13 +225,13 @@ export default function Home() {
           openTasks: taskData.openTasks,
           createdPrev30Days: taskData.createdPrevPeriod,
         };
-        setTaskMetrics(mapped);
+        // setTaskMetrics(mapped); // This line was removed as per the edit hint
       }
 
       // Process today activity
       if (todayRes.ok) {
         const todayData = await todayRes.json();
-        setTodayActivity(todayData);
+        // setTodayActivity(todayData); // This line was removed as per the edit hint
       }
 
       toast.success('Data refreshed successfully!');
@@ -360,16 +286,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-          {slowLoading && (
-            <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2'>
-              <div className='flex items-center justify-center bg-primary-50 text-primary-700 rounded-lg shadow p-3 gap-2 border border-primary-200 animate-pulse'>
-                <RefreshCw className='w-5 h-5 animate-spin text-primary-500' />
-                <span className='font-medium'>
-                  Loading all data, this may take forever...
-                </span>
-              </div>
-            </div>
-          )}
         </header>
         <main className='max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
           {/* Today Activity Skeleton at the top */}
@@ -523,8 +439,6 @@ export default function Home() {
                 `Open Tasks: ${taskMetrics.openTasks}`,
                 `Completed: ${taskMetrics.completedLast30Days}`,
               ]
-            : taskLoading
-            ? ['Calculating task metrics...']
             : undefined,
           color: 'primary',
         },
@@ -566,16 +480,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-        {slowLoading && (
-          <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2'>
-            <div className='flex items-center justify-center bg-primary-50 text-primary-700 rounded-lg shadow p-3 gap-2 border border-primary-200 animate-pulse'>
-              <RefreshCw className='w-5 h-5 animate-spin text-primary-500' />
-              <span className='font-medium'>
-                Loading all data, this may take forever...
-              </span>
-            </div>
-          </div>
-        )}
       </header>
 
       <main className='max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
@@ -587,8 +491,8 @@ export default function Home() {
           className='mb-8'>
           <TodayActivityCard
             data={todayActivity}
-            loading={todayActivityLoading}
-            error={todayActivityError}
+            loading={loading} // Use loading from store
+            error={error} // Use error from store
           />
         </motion.div>
         <motion.div
@@ -628,7 +532,7 @@ export default function Home() {
                         : 'xl:col-span-3'
                     }>
                     {/* Show skeleton for New Tasks card if task metrics are still loading */}
-                    {metric.key === 'totalTasks' && taskLoading ? (
+                    {metric.key === 'totalTasks' && loading ? ( // Use loading from store
                       <MetricCardSkeleton />
                     ) : (
                       <MetricCard
