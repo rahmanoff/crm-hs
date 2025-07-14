@@ -276,6 +276,52 @@ export default function Home() {
     fetchTopOpenLost();
   }, [timeRange]);
 
+  // Add state for top won/lost companies/contacts
+  const [topWonEntities, setTopWonEntities] = React.useState<
+    { label: string; sum: number }[]
+  >([]);
+  const [topLostEntities, setTopLostEntities] = React.useState<
+    { label: string; sum: number }[]
+  >([]);
+  const [topEntitiesLoading, setTopEntitiesLoading] =
+    React.useState(false);
+  const [topEntitiesError, setTopEntitiesError] = React.useState<
+    string | null
+  >(null);
+
+  // Fetch Top Won/Lost Companies/Contacts when timeRange changes
+  React.useEffect(() => {
+    const fetchTopEntities = async () => {
+      setTopEntitiesLoading(true);
+      setTopEntitiesError(null);
+      try {
+        const now = Date.now();
+        const period = timeRange * 24 * 60 * 60 * 1000;
+        const start = timeRange === 0 ? 0 : now - period;
+        const end = now;
+        const [wonRes, lostRes] = await Promise.all([
+          fetch(
+            `/api/companies/top-won-entities?start=${start}&end=${end}`
+          ),
+          fetch(
+            `/api/companies/top-lost-entities?start=${start}&end=${end}`
+          ),
+        ]);
+        if (!wonRes.ok || !lostRes.ok)
+          throw new Error('Failed to fetch top companies/contacts');
+        setTopWonEntities(await wonRes.json());
+        setTopLostEntities(await lostRes.json());
+      } catch (err: any) {
+        setTopEntitiesError(
+          err.message || 'Failed to fetch top companies/contacts'
+        );
+      } finally {
+        setTopEntitiesLoading(false);
+      }
+    };
+    fetchTopEntities();
+  }, [timeRange]);
+
   // Remove local state and effects for taskMetrics and todayActivity
   // Remove useState and useEffect for taskMetrics, todayActivity, taskLoading, todayActivityLoading, todayActivityError
 
@@ -753,6 +799,43 @@ export default function Home() {
           {topOpenLostError && (
             <div className='text-center text-red-500 mt-2'>
               {topOpenLostError}
+            </div>
+          )}
+        </motion.div>
+        {/* Top Won/Lost Companies/Contacts Section */}
+        <motion.div
+          variants={itemVariants}
+          initial='hidden'
+          animate='visible'
+          className='mb-8 w-full'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-8 w-full'>
+            <TopDealsCard
+              title='Top 10 Won Companies/Contacts'
+              deals={topWonEntities.map((e) => ({
+                company: e.label,
+                contacts: [],
+                name: '',
+                amount: e.sum,
+              }))}
+            />
+            <TopDealsCard
+              title='Top 10 Lost Companies/Contacts'
+              deals={topLostEntities.map((e) => ({
+                company: e.label,
+                contacts: [],
+                name: '',
+                amount: e.sum,
+              }))}
+            />
+          </div>
+          {topEntitiesLoading && (
+            <div className='text-center text-gray-500 mt-2'>
+              Loading top companies/contacts...
+            </div>
+          )}
+          {topEntitiesError && (
+            <div className='text-center text-red-500 mt-2'>
+              {topEntitiesError}
             </div>
           )}
         </motion.div>

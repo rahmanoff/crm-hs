@@ -1073,6 +1073,118 @@ class HubSpotService {
       })
     );
   }
+
+  /**
+   * Returns top N companies (or contacts if no company) by sum of won deals in the given period.
+   */
+  async getTopWonCompaniesOrContacts(
+    start: number,
+    end: number,
+    limit = 10
+  ) {
+    const dealsData = await this.searchObjects(
+      'deals',
+      [
+        {
+          filters: [
+            {
+              propertyName: 'dealstage',
+              operator: 'EQ',
+              value: 'closedwon',
+            },
+            {
+              propertyName: 'closedate',
+              operator: 'BETWEEN',
+              value: start,
+              highValue: end,
+            },
+          ],
+        },
+      ],
+      ['dealname', 'amount', 'createdate', 'closedate']
+    );
+    // Aggregate by company or contact
+    const entityMap = new Map();
+    for (const deal of dealsData.results) {
+      const amount = deal.properties.amount
+        ? parseFloat(deal.properties.amount)
+        : 0;
+      if (!amount) continue;
+      const company = await this.getDealCompany(deal.id);
+      let key = company;
+      let label = company;
+      if (!company) {
+        const contacts = await this.getDealContacts(deal.id);
+        key = contacts.join(', ');
+        label = key;
+      }
+      if (!key) continue;
+      if (!entityMap.has(key)) {
+        entityMap.set(key, { label, sum: 0 });
+      }
+      entityMap.get(key).sum += amount;
+    }
+    // Sort and return top N
+    return Array.from(entityMap.values())
+      .sort((a, b) => b.sum - a.sum)
+      .slice(0, limit);
+  }
+
+  /**
+   * Returns top N companies (or contacts if no company) by sum of lost deals in the given period.
+   */
+  async getTopLostCompaniesOrContacts(
+    start: number,
+    end: number,
+    limit = 10
+  ) {
+    const dealsData = await this.searchObjects(
+      'deals',
+      [
+        {
+          filters: [
+            {
+              propertyName: 'dealstage',
+              operator: 'EQ',
+              value: 'closedlost',
+            },
+            {
+              propertyName: 'closedate',
+              operator: 'BETWEEN',
+              value: start,
+              highValue: end,
+            },
+          ],
+        },
+      ],
+      ['dealname', 'amount', 'createdate', 'closedate']
+    );
+    // Aggregate by company or contact
+    const entityMap = new Map();
+    for (const deal of dealsData.results) {
+      const amount = deal.properties.amount
+        ? parseFloat(deal.properties.amount)
+        : 0;
+      if (!amount) continue;
+      const company = await this.getDealCompany(deal.id);
+      let key = company;
+      let label = company;
+      if (!company) {
+        const contacts = await this.getDealContacts(deal.id);
+        key = contacts.join(', ');
+        label = key;
+      }
+      if (!key) continue;
+      if (!entityMap.has(key)) {
+        entityMap.set(key, { label, sum: 0 });
+      }
+      entityMap.get(key).sum += amount;
+    }
+    // Sort and return top N
+    return Array.from(entityMap.values())
+      .sort((a, b) => b.sum - a.sum)
+      .slice(0, limit);
+  }
 }
 
 export const hubSpotService = new HubSpotService();
