@@ -14,6 +14,7 @@ export interface DealMetrics {
   newDealsValue: number;
   averageNewDealSize: number;
   activeDealsValue: number;
+  conversionRate: number;
 }
 
 /**
@@ -121,6 +122,10 @@ export function getDealMetrics(
     : 0;
   const averageNewDealSize =
     newDeals > 0 ? newDealsValue / newDeals : 0;
+  const conversionRate =
+    wonDeals + lostDeals > 0
+      ? (wonDeals / (wonDeals + lostDeals)) * 100
+      : 0;
 
   return {
     totalDeals,
@@ -136,5 +141,6 @@ export function getDealMetrics(
     newDealsValue,
     averageNewDealSize,
     activeDealsValue,
+    conversionRate,
   };
 }

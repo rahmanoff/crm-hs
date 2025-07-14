@@ -371,8 +371,8 @@ export default function Home() {
         },
         {
           title: `New Deals (${timeRangeLabel})`,
-          value: metrics.current.totalDeals,
-          prev: metrics.previous.totalDeals,
+          value: metrics.current.newDeals, // Use newDeals instead of totalDeals
+          prev: metrics.previous.newDeals, // Use newDeals for previous period
           icon: Briefcase,
           key: 'totalDeals',
           format: 'number',

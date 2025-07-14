@@ -8,6 +8,7 @@ import {
 } from './dateUtils';
 import { cache } from './cache';
 import pLimit from 'p-limit';
+import { getDealMetrics } from './metrics/deals';
 // REMOVE: import { Client as HubSpotClient } from '@hubspot/api-client';
 
 const HUBSPOT_API_BASE = 'https://api.hubapi.com';
@@ -78,7 +79,9 @@ export interface DashboardMetrics {
   totalCompanies: number;
   allTimeCompanies: number;
   totalDeals: number;
+  newDeals: number;
   newDealsValue: number;
+  averageNewDealSize: number;
   totalTasks: number;
   activeDeals: number;
   activeDealsValue: number;
@@ -446,134 +449,17 @@ class HubSpotService {
       }
       // Deals
       const tasks = allTasks.results;
-      // Helper to calculate metrics for a set of deals
-      const calcDealMetrics = (
-        dealSet: any[],
-        periodStart: number,
-        periodEnd: number
-      ) => {
-        // Only consider deals closed as 'Won' in the period for revenue metrics
-        const wonDealsInPeriod = dealSet.filter((deal) => {
-          const closed = deal.properties.closedate
-            ? new Date(deal.properties.closedate).getTime()
-            : null;
-          return (
-            deal.properties.dealstage === 'closedwon' &&
-            closed !== null &&
-            closed >= periodStart &&
-            closed <= periodEnd
-          );
-        });
-        let wonDeals = wonDealsInPeriod.length;
-        let revenue = wonDealsInPeriod.reduce((sum, deal) => {
-          const amount = deal.properties.amount
-            ? parseFloat(deal.properties.amount)
-            : 0;
-          return sum + amount;
-        }, 0);
-        let wonDealSizes = wonDealsInPeriod.map((deal) =>
-          deal.properties.amount
-            ? parseFloat(deal.properties.amount)
-            : 0
-        );
-        let averageWonDealSize = wonDealSizes.length
-          ? wonDealSizes.reduce((a, b) => a + b, 0) /
-            wonDealSizes.length
-          : 0;
-        // For other metrics, keep existing logic
-        let newDeals = 0,
-          lostDeals = 0,
-          openDeals = 0,
-          lostRevenue = 0,
-          allDealSizes: number[] = [],
-          newDealsValue = 0,
-          activeDealsValue = 0;
-        for (const deal of dealSet) {
-          const created = deal.properties.createdate
-            ? new Date(deal.properties.createdate).getTime()
-            : null;
-          const closed = deal.properties.closedate
-            ? new Date(deal.properties.closedate).getTime()
-            : null;
-          const stage = deal.properties.dealstage;
-          const amount = deal.properties.amount
-            ? parseFloat(deal.properties.amount)
-            : 0;
-          if (amount) allDealSizes.push(amount);
-          // New deals: created in period
-          if (
-            created &&
-            created >= periodStart &&
-            created <= periodEnd
-          ) {
-            newDeals++;
-            if (amount) newDealsValue += amount;
-          }
-          // Lost deals: closed as lost in period
-          if (
-            stage === 'closedlost' &&
-            closed &&
-            closed >= periodStart &&
-            closed <= periodEnd
-          ) {
-            lostDeals++;
-            if (amount) lostRevenue += amount;
-          }
-          // Open deals (all-time)
-          if (stage !== 'closedwon' && stage !== 'closedlost') {
-            openDeals++;
-            if (amount) activeDealsValue += amount;
-          }
-        }
-        const averageDealSize = allDealSizes.length
-          ? allDealSizes.reduce((a, b) => a + b, 0) /
-            allDealSizes.length
-          : 0;
-        const conversionRate =
-          wonDeals + lostDeals > 0
-            ? (wonDeals / (wonDeals + lostDeals)) * 100
-            : 0;
-        return {
-          totalDeals: dealSet.length, // all deals in the set
-          newDeals,
-          newDealsValue,
-          wonDeals,
-          lostDeals,
-          openDeals,
-          revenue,
-          lostRevenue,
-          averageDealSize,
-          averageWonDealSize,
-          activeDealsValue,
-          conversionRate,
-        };
-      };
-      // Current and previous metrics: use allDeals, but filter by closedate for won/lost/revenue
-      let currentDealMetrics, prevDealMetrics;
-      if (days === 0) {
-        // All time: use unbounded period
-        currentDealMetrics = calcDealMetrics(
-          allDeals.results,
-          -Infinity,
-          Infinity
-        );
-        prevDealMetrics = calcDealMetrics(
-          allDeals.results,
-          -Infinity,
-          -Infinity // No previous period for all time
-        );
-      } else {
-        currentDealMetrics = calcDealMetrics(
-          allDeals.results,
-          start,
-          now
-        );
-        prevDealMetrics = calcDealMetrics(
-          allDeals.results,
-          prevStart,
-          prevEnd
-        );
-      }
+      // Use getDealMetrics to get all deal metrics, including averageNewDealSize
+      const currentDealMetrics = getDealMetrics(
+        allDeals.results,
+        days,
+        now
+      );
+      const prevDealMetrics = getDealMetrics(
+        allDeals.results,
+        days,
+        prevEnd
+      );
       // Tasks (for compatibility)
       const totalTasks = tasks.length;
       const tasksCompleted = tasks.filter(
@@ -588,7 +474,9 @@ class HubSpotService {
         totalCompanies: currentCompanies.length,
         allTimeCompanies: allCompanies.total,
         totalDeals: currentDealMetrics.totalDeals,
+        newDeals: currentDealMetrics.newDeals,
         newDealsValue: currentDealMetrics.newDealsValue,
+        averageNewDealSize: currentDealMetrics.averageNewDealSize,
         totalTasks,
         activeDeals: currentDealMetrics.openDeals,
         activeDealsValue: currentDealMetrics.activeDealsValue,
@@ -607,7 +495,9 @@ class HubSpotService {
         totalCompanies: prevCompanies.length,
         allTimeCompanies: allCompanies.total,
         totalDeals: prevDealMetrics.totalDeals,
+        newDeals: prevDealMetrics.newDeals,
         newDealsValue: prevDealMetrics.newDealsValue,
+        averageNewDealSize: prevDealMetrics.averageNewDealSize,
         totalTasks,
         activeDeals: prevDealMetrics.openDeals,
         activeDealsValue: prevDealMetrics.activeDealsValue,
@@ -642,7 +532,9 @@ class HubSpotService {
         totalCompanies: 0,
         allTimeCompanies: 0,
         totalDeals: 0,
+        newDeals: 0,
         newDealsValue: 0,
+        averageNewDealSize: 0,
         totalTasks: 0,
         activeDeals: 0,
         activeDealsValue: 0,
