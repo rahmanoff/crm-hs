@@ -452,13 +452,39 @@ class HubSpotService {
         periodStart: number,
         periodEnd: number
       ) => {
+        // Only consider deals closed as 'Won' in the period for revenue metrics
+        const wonDealsInPeriod = dealSet.filter((deal) => {
+          const closed = deal.properties.closedate
+            ? new Date(deal.properties.closedate).getTime()
+            : null;
+          return (
+            deal.properties.dealstage === 'closedwon' &&
+            closed !== null &&
+            closed >= periodStart &&
+            closed <= periodEnd
+          );
+        });
+        let wonDeals = wonDealsInPeriod.length;
+        let revenue = wonDealsInPeriod.reduce((sum, deal) => {
+          const amount = deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0;
+          return sum + amount;
+        }, 0);
+        let wonDealSizes = wonDealsInPeriod.map((deal) =>
+          deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0
+        );
+        let averageWonDealSize = wonDealSizes.length
+          ? wonDealSizes.reduce((a, b) => a + b, 0) /
+            wonDealSizes.length
+          : 0;
+        // For other metrics, keep existing logic
         let newDeals = 0,
-          wonDeals = 0,
           lostDeals = 0,
           openDeals = 0,
-          revenue = 0,
           lostRevenue = 0,
-          wonDealSizes: number[] = [],
           allDealSizes: number[] = [],
           newDealsValue = 0,
           activeDealsValue = 0;
@@ -483,19 +509,6 @@ class HubSpotService {
             newDeals++;
             if (amount) newDealsValue += amount;
           }
-          // Won deals: closed as won in period
-          if (
-            stage === 'closedwon' &&
-            closed &&
-            closed >= periodStart &&
-            closed <= periodEnd
-          ) {
-            wonDeals++;
-            if (amount) {
-              revenue += amount;
-              wonDealSizes.push(amount);
-            }
-          }
           // Lost deals: closed as lost in period
           if (
             stage === 'closedlost' &&
@@ -515,10 +528,6 @@ class HubSpotService {
         const averageDealSize = allDealSizes.length
           ? allDealSizes.reduce((a, b) => a + b, 0) /
             allDealSizes.length
-          : 0;
-        const averageWonDealSize = wonDealSizes.length
-          ? wonDealSizes.reduce((a, b) => a + b, 0) /
-            wonDealSizes.length
           : 0;
         const conversionRate =
           wonDeals + lostDeals > 0
