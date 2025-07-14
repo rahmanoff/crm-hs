@@ -447,7 +447,11 @@ class HubSpotService {
       // Deals
       const tasks = allTasks.results;
       // Helper to calculate metrics for a set of deals
-      const calcDealMetrics = (dealSet: any[]) => {
+      const calcDealMetrics = (
+        dealSet: any[],
+        periodStart: number,
+        periodEnd: number
+      ) => {
         let newDeals = 0,
           wonDeals = 0,
           lostDeals = 0,
@@ -470,19 +474,39 @@ class HubSpotService {
             ? parseFloat(deal.properties.amount)
             : 0;
           if (amount) allDealSizes.push(amount);
-          if (created) newDeals++;
-          if (amount && created) newDealsValue += amount;
-          if (stage === 'closedwon') {
+          // New deals: created in period
+          if (
+            created &&
+            created >= periodStart &&
+            created <= periodEnd
+          ) {
+            newDeals++;
+            if (amount) newDealsValue += amount;
+          }
+          // Won deals: closed as won in period
+          if (
+            stage === 'closedwon' &&
+            closed &&
+            closed >= periodStart &&
+            closed <= periodEnd
+          ) {
             wonDeals++;
             if (amount) {
               revenue += amount;
               wonDealSizes.push(amount);
             }
           }
-          if (stage === 'closedlost') {
+          // Lost deals: closed as lost in period
+          if (
+            stage === 'closedlost' &&
+            closed &&
+            closed >= periodStart &&
+            closed <= periodEnd
+          ) {
             lostDeals++;
             if (amount) lostRevenue += amount;
           }
+          // Open deals (all-time)
           if (stage !== 'closedwon' && stage !== 'closedlost') {
             openDeals++;
             if (amount) activeDealsValue += amount;
@@ -501,7 +525,8 @@ class HubSpotService {
             ? (wonDeals / (wonDeals + lostDeals)) * 100
             : 0;
         return {
-          totalDeals: newDeals,
+          totalDeals: dealSet.length, // all deals in the set
+          newDeals,
           newDealsValue,
           wonDeals,
           lostDeals,
@@ -514,9 +539,17 @@ class HubSpotService {
           conversionRate,
         };
       };
-      // Current and previous metrics
-      const currentDealMetrics = calcDealMetrics(currentDeals);
-      const prevDealMetrics = calcDealMetrics(prevDeals);
+      // Current and previous metrics: use allDeals, but filter by closedate for won/lost/revenue
+      const currentDealMetrics = calcDealMetrics(
+        allDeals.results,
+        start,
+        now
+      );
+      const prevDealMetrics = calcDealMetrics(
+        allDeals.results,
+        prevStart,
+        prevEnd
+      );
       // Tasks (for compatibility)
       const totalTasks = tasks.length;
       const tasksCompleted = tasks.filter(

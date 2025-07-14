@@ -79,6 +79,7 @@ export function getDealMetrics(
         newDeals++;
         if (amount) newDealsValue += amount;
       }
+      // UPDATED: Only filter by closedate for wonDeals/revenue/averageWonDealSize
       if (
         stage === 'closedwon' &&
         closed &&

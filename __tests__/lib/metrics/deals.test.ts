@@ -111,4 +111,25 @@ describe('getDealMetrics', () => {
     const metrics = getDealMetrics(deals, 0, now);
     expect(metrics.openDeals).toBe(1);
   });
+
+  it('counts deals created before the period but closed as won within the period', () => {
+    const deals: HubSpotDeal[] = [
+      makeDeal({
+        createdate: new Date(now - 60 * msInDay).toISOString(), // way before period
+        closedate: new Date(now - 2 * msInDay).toISOString(), // within period
+        dealstage: 'closedwon',
+        amount: '500',
+      }),
+      makeDeal({
+        createdate: new Date(now - 10 * msInDay).toISOString(), // in period
+        closedate: new Date(now - 2 * msInDay).toISOString(), // in period
+        dealstage: 'closedwon',
+        amount: '200',
+      }),
+    ];
+    const metrics = getDealMetrics(deals, 30, now);
+    expect(metrics.wonDeals).toBe(2);
+    expect(metrics.revenue).toBe(700);
+    expect(metrics.averageWonDealSize).toBe(350);
+  });
 });
