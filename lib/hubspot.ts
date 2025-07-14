@@ -540,16 +540,31 @@ class HubSpotService {
         };
       };
       // Current and previous metrics: use allDeals, but filter by closedate for won/lost/revenue
-      const currentDealMetrics = calcDealMetrics(
-        allDeals.results,
-        start,
-        now
-      );
-      const prevDealMetrics = calcDealMetrics(
-        allDeals.results,
-        prevStart,
-        prevEnd
-      );
+      let currentDealMetrics, prevDealMetrics;
+      if (days === 0) {
+        // All time: use unbounded period
+        currentDealMetrics = calcDealMetrics(
+          allDeals.results,
+          -Infinity,
+          Infinity
+        );
+        prevDealMetrics = calcDealMetrics(
+          allDeals.results,
+          -Infinity,
+          -Infinity // No previous period for all time
+        );
+      } else {
+        currentDealMetrics = calcDealMetrics(
+          allDeals.results,
+          start,
+          now
+        );
+        prevDealMetrics = calcDealMetrics(
+          allDeals.results,
+          prevStart,
+          prevEnd
+        );
+      }
       // Tasks (for compatibility)
       const totalTasks = tasks.length;
       const tasksCompleted = tasks.filter(
