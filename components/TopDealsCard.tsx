@@ -33,17 +33,15 @@ const TopDealsCard: React.FC<TopDealsCardProps> = ({
             key={idx}
             className='py-1 flex items-center justify-between'>
             <span className='text-gray-900'>
-              {deal.company && (
+              {deal.company ? (
                 <span className='font-semibold text-black'>
                   {deal.company}
                 </span>
-              )}
-              {/* Only show contacts if company is missing */}
-              {!deal.company && deal.contacts.length > 0 && (
+              ) : deal.contacts.length > 0 ? (
                 <span className='text-black'>
                   {deal.contacts.join(', ')}
                 </span>
-              )}
+              ) : null}
               {(deal.company || deal.contacts.length > 0) &&
                 deal.name &&
                 ', '}
