@@ -1,4 +1,5 @@
 import React from 'react';
+import { DollarSign } from 'lucide-react';
 
 interface TopDeal {
   company?: string | null;
@@ -17,7 +18,12 @@ const TopDealsCard: React.FC<TopDealsCardProps> = ({
   deals,
 }) => (
   <div className='card h-full flex flex-col'>
-    <h4 className='font-semibold text-gray-800 mb-4'>{title}</h4>
+    <div className='flex items-center justify-between mb-4'>
+      <h4 className='font-semibold text-gray-800'>{title}</h4>
+      <div className='p-2 rounded-lg text-primary-600 bg-primary-50'>
+        <DollarSign className='w-5 h-5' />
+      </div>
+    </div>
     {deals.length === 0 ? (
       <p className='text-gray-500 text-sm'>No deals found</p>
     ) : (
