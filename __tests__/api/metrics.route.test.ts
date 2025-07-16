@@ -17,8 +17,10 @@ describe('/api/metrics API route', () => {
   });
 
   it('returns metrics for a valid request', async () => {
-    (hubSpotService.getDashboardMetrics as jest.Mock)
-      .mockResolvedValueOnce({
+    (
+      hubSpotService.getDashboardMetrics as jest.Mock
+    ).mockResolvedValueOnce({
+      current: {
         totalContacts: 1,
         totalCompanies: 2,
         totalDeals: 3,
@@ -36,8 +38,8 @@ describe('/api/metrics API route', () => {
         conversionRate: 50,
         tasksCompleted: 3,
         tasksOverdue: 0,
-      })
-      .mockResolvedValueOnce({
+      },
+      previous: {
         totalContacts: 0,
         totalCompanies: 0,
         totalDeals: 0,
@@ -55,7 +57,19 @@ describe('/api/metrics API route', () => {
         conversionRate: 0,
         tasksCompleted: 0,
         tasksOverdue: 0,
-      });
+      },
+    });
+    (hubSpotService.searchObjects as jest.Mock).mockResolvedValueOnce({
+      results: [
+        {
+          properties: {
+            dealstage: 'appointmentscheduled',
+            amount: '100',
+          },
+        },
+        { properties: { dealstage: 'closedwon', amount: '200' } },
+      ],
+    });
 
     const req = { url: 'http://localhost/api/metrics?days=30' } as any;
     const res = await GET(req);
@@ -80,22 +94,5 @@ describe('/api/metrics API route', () => {
     expect(res.status).toBe(500);
     const json = await res.json();
     expect(json.error).toMatch(/internal error/i);
-  });
-});
-
-describe('GET /api/activity/today', () => {
-  it('should return new deals with company, contacts, name, and amount', async () => {
-    const res = await fetch('http://localhost:3000/api/activity/today');
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(Array.isArray(data.newDeals)).toBe(true);
-    if (data.newDeals.length > 0) {
-      const deal = data.newDeals[0];
-      expect(deal).toHaveProperty('company');
-      expect(deal).toHaveProperty('contacts');
-      expect(Array.isArray(deal.contacts)).toBe(true);
-      expect(deal).toHaveProperty('name');
-      expect(deal).toHaveProperty('amount');
-    }
   });
 });

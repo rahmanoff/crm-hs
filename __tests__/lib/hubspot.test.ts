@@ -47,10 +47,12 @@ describe('HubSpotService', () => {
 
       const metrics = await hubSpotService.getDashboardMetrics(0);
 
-      expect(metrics.totalContacts).toBe(1);
-      expect(metrics.allTimeContacts).toBe(1);
-      expect(metrics.totalCompanies).toBe(1);
-      expect(metrics.allTimeCompanies).toBe(1);
+      expect(metrics.current.totalContacts).toBe(1);
+      expect(metrics.current.allTimeContacts).toBe(1);
+      expect(metrics.current.totalCompanies).toBe(1);
+      expect(metrics.current.allTimeCompanies).toBe(1);
+      expect(metrics.previous.totalContacts).toBeDefined();
+      expect(metrics.previous.totalCompanies).toBeDefined();
       // ...existing code ...
 
       searchObjectsSpy.mockRestore();
@@ -65,8 +67,10 @@ describe('HubSpotService', () => {
 
       const metrics = await hubSpotService.getDashboardMetrics();
 
-      expect(metrics.totalContacts).toBe(0);
-      expect(metrics.totalCompanies).toBe(0);
+      expect(metrics.current.totalContacts).toBe(0);
+      expect(metrics.current.totalCompanies).toBe(0);
+      expect(metrics.previous.totalContacts).toBeDefined();
+      expect(metrics.previous.totalCompanies).toBeDefined();
       // ...existing code ...
 
       searchObjectsSpy.mockRestore();
@@ -81,8 +85,10 @@ describe('HubSpotService', () => {
 
       const metrics = await hubSpotService.getDashboardMetrics();
 
-      expect(metrics.totalContacts).toBe(0);
-      expect(metrics.totalCompanies).toBe(0);
+      expect(metrics.current.totalContacts).toBe(0);
+      expect(metrics.current.totalCompanies).toBe(0);
+      expect(metrics.previous.totalContacts).toBeDefined();
+      expect(metrics.previous.totalCompanies).toBeDefined();
       // ...existing code ...
 
       searchObjectsSpy.mockRestore();
