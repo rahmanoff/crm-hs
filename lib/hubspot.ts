@@ -1187,4 +1187,19 @@ class HubSpotService {
   }
 }
 
+/**
+ * Fetches all deal properties from HubSpot, including dealstage options.
+ */
+export async function fetchDealProperties(): Promise<any> {
+  const apiKey = process.env.HUBSPOT_API_KEY;
+  if (!apiKey) throw new Error('HubSpot API key not found.');
+  const url = 'https://api.hubapi.com/crm/v3/properties/deals';
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok)
+    throw new Error('Failed to fetch deal properties from HubSpot');
+  return res.json();
+}
+
 export const hubSpotService = new HubSpotService();

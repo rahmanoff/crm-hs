@@ -29,6 +29,7 @@ import MetricCardSkeleton from '@/components/MetricCardSkeleton';
 import ChartSkeleton from '@/components/ChartSkeleton';
 import ActivityFeedSkeleton from '@/components/ActivityFeedSkeleton';
 import TopDealsCard from '@/components/TopDealsCard';
+import DealsByStageCard from '@/components/DealsByStageCard';
 
 type MetricCardConfig = {
   title: string;
@@ -320,6 +321,37 @@ export default function Home() {
       }
     };
     fetchTopEntities();
+  }, [timeRange]);
+
+  const [dealsByStage, setDealsByStage] = React.useState([]);
+  const [dealsByStageLoading, setDealsByStageLoading] =
+    React.useState(false);
+  const [dealsByStageError, setDealsByStageError] = React.useState<
+    string | null
+  >(null);
+
+  React.useEffect(() => {
+    const fetchDealsByStage = async () => {
+      setDealsByStageLoading(true);
+      setDealsByStageError(null);
+      try {
+        const res = await fetch(
+          `/api/deals/metrics/stages-metrics?trendPeriod=${timeRange}`
+        );
+        if (!res.ok) throw new Error('Failed to fetch deals by stage');
+        const data = await res.json();
+        setDealsByStage(data.stages || []);
+      } catch (err: unknown) {
+        setDealsByStageError(
+          err instanceof Error
+            ? err.message
+            : String(err) || 'Failed to fetch deals by stage'
+        );
+      } finally {
+        setDealsByStageLoading(false);
+      }
+    };
+    fetchDealsByStage();
   }, [timeRange]);
 
   // Remove local state and effects for taskMetrics and todayActivity
@@ -627,6 +659,18 @@ export default function Home() {
             data={todayActivity}
             loading={loading} // Use loading from store
             error={error} // Use error from store
+          />
+        </motion.div>
+        {/* Deals By Stage Section */}
+        <motion.div
+          variants={itemVariants}
+          initial='hidden'
+          animate='visible'
+          className='mb-8'>
+          <DealsByStageCard
+            stages={dealsByStage}
+            loading={dealsByStageLoading}
+            error={dealsByStageError}
           />
         </motion.div>
         {/* Metric Cards and Trends */}
