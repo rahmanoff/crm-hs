@@ -1,5 +1,10 @@
-import { getDealMetrics, DealMetrics } from '@/lib/metrics/deals';
+import {
+  getDealMetrics,
+  DealMetrics,
+  getOpenDealsForecastByMonth,
+} from '@/lib/metrics/deals';
 import { HubSpotDeal } from '@/lib/hubspot';
+import { hubSpotService } from '@/lib/hubspot';
 
 describe('getDealMetrics', () => {
   const now = Date.UTC(2023, 0, 31); // Jan 31, 2023
@@ -131,5 +136,53 @@ describe('getDealMetrics', () => {
     expect(metrics.wonDeals).toBe(2);
     expect(metrics.revenue).toBe(700);
     expect(metrics.averageWonDealSize).toBe(350);
+  });
+});
+
+describe('getOpenDealsForecastByMonth', () => {
+  it('returns forecast grouped by month for open deals', async () => {
+    // Mock deals
+    const mockDeals = [
+      {
+        id: '1',
+        properties: {
+          amount: '100',
+          closedate: '2024-06-15T00:00:00Z',
+        },
+      },
+      {
+        id: '2',
+        properties: {
+          amount: '200',
+          closedate: '2024-06-20T00:00:00Z',
+        },
+      },
+      {
+        id: '3',
+        properties: {
+          amount: '300',
+          closedate: '2024-07-05T00:00:00Z',
+        },
+      },
+      {
+        id: '4',
+        properties: { amount: '0', closedate: '2024-07-10T00:00:00Z' }, // should be ignored
+      },
+      {
+        id: '5',
+        properties: { amount: '400', closedate: undefined }, // should be ignored
+      },
+    ];
+    jest
+      .spyOn(hubSpotService, 'searchObjects')
+      .mockResolvedValue({
+        total: mockDeals.length,
+        results: mockDeals,
+      });
+    const forecast = await getOpenDealsForecastByMonth();
+    expect(forecast).toEqual([
+      { month: '2024-06', total: 300 },
+      { month: '2024-07', total: 300 },
+    ]);
   });
 });

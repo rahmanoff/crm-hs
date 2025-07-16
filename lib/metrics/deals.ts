@@ -1,3 +1,4 @@
+import { hubSpotService } from '../hubspot';
 import { HubSpotDeal } from '../hubspot';
 
 export interface DealMetrics {
@@ -157,4 +158,51 @@ export function getDealMetrics(
     conversionRate,
     valueCloseRate, // NEW
   };
+}
+
+/**
+ * Returns forecast data: for each month, the sum of all open deals with a Close Date in that month.
+ * Only deals not in 'closedwon' or 'closedlost' are considered open.
+ * Returns array of { month: 'YYYY-MM', total: number }
+ */
+export async function getOpenDealsForecastByMonth(): Promise<
+  { month: string; total: number }[]
+> {
+  // Fetch all open deals
+  const dealsData = await hubSpotService.searchObjects(
+    'deals',
+    [
+      {
+        filters: [
+          {
+            propertyName: 'dealstage',
+            operator: 'NEQ',
+            value: 'closedwon',
+          },
+          {
+            propertyName: 'dealstage',
+            operator: 'NEQ',
+            value: 'closedlost',
+          },
+        ],
+      },
+    ],
+    ['amount', 'closedate']
+  );
+  const openDeals: HubSpotDeal[] = dealsData.results;
+  // Group by month of close date
+  const forecastMap = new Map<string, number>();
+  for (const deal of openDeals) {
+    const closeDate = deal.properties.closedate;
+    const amount = deal.properties.amount
+      ? parseFloat(deal.properties.amount)
+      : 0;
+    if (!closeDate || !amount) continue;
+    const month = new Date(closeDate).toISOString().slice(0, 7); // 'YYYY-MM'
+    forecastMap.set(month, (forecastMap.get(month) || 0) + amount);
+  }
+  // Convert to sorted array
+  return Array.from(forecastMap.entries())
+    .map(([month, total]) => ({ month, total }))
+    .sort((a, b) => a.month.localeCompare(b.month));
 }

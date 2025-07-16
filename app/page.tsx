@@ -30,6 +30,7 @@ import ChartSkeleton from '@/components/ChartSkeleton';
 import ActivityFeedSkeleton from '@/components/ActivityFeedSkeleton';
 import TopDealsCard from '@/components/TopDealsCard';
 import DealsByStageCard from '@/components/DealsByStageCard';
+import SalesForecastCard from '@/components/SalesForecastCard';
 
 type MetricCardConfig = {
   title: string;
@@ -883,6 +884,9 @@ export default function Home() {
             </div>
           )}
         </motion.div>
+        <div className='my-8'>
+          <SalesForecastCard />
+        </div>
       </main>
     </div>
   );
