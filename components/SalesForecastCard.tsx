@@ -128,6 +128,7 @@ export default function SalesForecastCard() {
               formatter={(value: number) =>
                 `$${value.toLocaleString()}`
               }
+              labelFormatter={(label: string) => formatMonthYear(label)}
             />
             <Bar
               dataKey='total'
