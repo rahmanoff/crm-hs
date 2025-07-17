@@ -96,7 +96,7 @@ export default function SalesForecastCard() {
   return (
     <div className='bg-white rounded-lg shadow p-6 w-full'>
       <div className='flex items-center justify-between mb-4'>
-        <h2 className='text-xl font-semibold'>Sales Forecast</h2>
+        <h2 className='text-lg font-semibold'>Sales Forecast</h2>
         <div className='p-2 rounded-lg text-primary-600 bg-primary-50'>
           <DollarSign className='w-5 h-5' />
         </div>

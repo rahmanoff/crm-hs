@@ -19,7 +19,7 @@ const TopDealsCard: React.FC<TopDealsCardProps> = ({
 }) => (
   <div className='card h-full flex flex-col'>
     <div className='flex items-center justify-between mb-4'>
-      <h4 className='font-semibold text-gray-800'>{title}</h4>
+      <h4 className='text-lg font-semibold text-gray-800'>{title}</h4>
       <div className='p-2 rounded-lg text-primary-600 bg-primary-50'>
         <DollarSign className='w-5 h-5' />
       </div>
@@ -32,22 +32,24 @@ const TopDealsCard: React.FC<TopDealsCardProps> = ({
           <li
             key={idx}
             className='py-1 flex items-center justify-between'>
-            <span className='text-gray-900'>
+            <span className='text-base text-gray-900'>
               {deal.company ? (
-                <span className='font-semibold text-black'>
+                <span className='font-semibold text-black text-base'>
                   {deal.company}
                 </span>
               ) : deal.contacts.length > 0 ? (
-                <span className='text-black'>
+                <span className='text-black text-base'>
                   {deal.contacts.join(', ')}
                 </span>
               ) : null}
               {(deal.company || deal.contacts.length > 0) &&
                 deal.name &&
                 ', '}
-              <span className='text-gray-900'>{deal.name}</span>
+              <span className='text-base text-gray-900'>
+                {deal.name}
+              </span>
             </span>
-            <span className='text-gray-700 font-mono font-bold text-right min-w-[80px]'>
+            <span className='text-base text-gray-700 font-mono font-bold text-right min-w-[80px]'>
               $
               {deal.amount.toLocaleString(undefined, {
                 maximumFractionDigits: 0,

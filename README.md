@@ -134,6 +134,33 @@ npm start
 └── public/                # Static assets
 ```
 
+## 🎨 UI Style Guide
+
+To ensure a consistent and professional look across the dashboard, all card-like UI components must follow these conventions:
+
+- **Card Container:**
+
+  - Use the `.card` class for all card components. This applies a white background, rounded corners, border, shadow, and padding.
+  - Example: `<div className="card">...</div>`
+
+- **Font Sizes & Typography:**
+
+  - **Card Headers:** Use `text-lg font-semibold` for all card titles/headers.
+  - **Main Values (e.g., metrics):** Use `text-3xl font-bold` for primary numbers or values.
+  - **Sub-labels, Table Text, Details:** Use `text-sm` or `text-base` for supporting information, table rows, and sub-labels.
+  - **Activity Titles, List Items:** Use `text-base font-medium` for list or activity titles.
+  - **Consistency:** All font sizes should be set explicitly using Tailwind classes, not inherited or left to defaults.
+
+- **Color & Accent:**
+
+  - Use Tailwind color utility classes for semantic meaning (e.g., `text-green-600` for positive trends, `text-red-600` for negative trends).
+
+- **Adding New Cards:**
+  - All new card components must use the `.card` class and follow the above font size conventions.
+  - For loading states, use skeleton components that visually match the loaded card's layout and font sizes.
+
+This style guide helps maintain a cohesive and scalable UI as the dashboard grows.
+
 ## 🔧 Configuration
 
 ### Environment Variables

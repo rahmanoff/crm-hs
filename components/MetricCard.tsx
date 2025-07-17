@@ -79,7 +79,7 @@ export default function MetricCard({
       <div className='flex flex-col justify-between h-full'>
         <div>
           <div className='flex items-center justify-between mb-2'>
-            <p className='text-sm font-medium text-gray-600'>{title}</p>
+            <p className='text-lg font-semibold text-gray-600'>{title}</p>
             <div
               className={`p-2 rounded-lg ${getColorClasses()}`}
               data-testid='metric-icon'>

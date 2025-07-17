@@ -55,7 +55,7 @@ const DealsByStageCard: React.FC<DealsByStageCardProps> = ({
   }
   return (
     <div className='card'>
-      <h4 className='font-semibold text-gray-800 mb-4'>
+      <h4 className='text-lg font-semibold text-gray-800 mb-4'>
         Open Deals by Stage
       </h4>
       <div className='overflow-x-auto'>
@@ -74,16 +74,16 @@ const DealsByStageCard: React.FC<DealsByStageCardProps> = ({
               <tr
                 key={stage.stage}
                 className='border-b last:border-0'>
-                <td className='py-2 px-2 font-medium text-gray-900'>
+                <td className='py-2 px-2 font-medium text-base text-gray-900'>
                   {STAGE_LABELS[stage.stage] || stage.stage}
                 </td>
-                <td className='py-2 px-2 text-right'>
+                <td className='text-xl py-2 px-2 text-right'>
                   {stage.count.toLocaleString()}
                 </td>
-                <td className='py-2 px-2 text-right'>
+                <td className='text-2xl py-2 px-2 text-right'>
                   ${stage.sum.toLocaleString()}
                 </td>
-                <td className='py-2 px-2 text-right'>
+                <td className='text-xl py-2 px-2 text-right'>
                   {getTrendArrow(
                     stage.trend.current.count,
                     stage.trend.previous.count
@@ -109,7 +109,7 @@ const DealsByStageCard: React.FC<DealsByStageCardProps> = ({
                           stage.trend.previous.count)}
                   </span>
                 </td>
-                <td className='py-2 px-2 text-right'>
+                <td className='text-xl py-2 px-2 text-right'>
                   {getTrendArrow(
                     stage.trend.current.sum,
                     stage.trend.previous.sum
