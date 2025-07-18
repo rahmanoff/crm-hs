@@ -31,6 +31,8 @@ const STAGE_LABELS: Record<string, string> = {
   decisionmakerboughtin: 'Shipped',
   presentationscheduled: 'Proporsal',
   contractsent: 'Payed',
+  appointmentscheduled: 'New',
+  qualifiedtobuy: 'Negotiation',
 };
 
 const DealsByStageCard: React.FC<DealsByStageCardProps> = ({
