@@ -28,11 +28,11 @@ function getTrendArrow(current: number, previous: number) {
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  decisionmakerboughtin: 'Shipped',
-  presentationscheduled: 'Proporsal',
-  contractsent: 'Payed',
   appointmentscheduled: 'New',
   qualifiedtobuy: 'Negotiation',
+  presentationscheduled: 'Proporsal',
+  decisionmakerboughtin: 'Shipped',
+  contractsent: 'Payed',
 };
 
 const DealsByStageCard: React.FC<DealsByStageCardProps> = ({
