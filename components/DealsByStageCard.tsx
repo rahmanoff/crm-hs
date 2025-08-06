@@ -35,6 +35,14 @@ const STAGE_LABELS: Record<string, string> = {
   contractsent: 'Payed',
 };
 
+const STAGE_ORDER = [
+  'appointmentscheduled', // New
+  'qualifiedtobuy', // Negotiation
+  'presentationscheduled', // Proporsal
+  'decisionmakerboughtin', // Shipped
+  'contractsent', // Payed
+];
+
 const DealsByStageCard: React.FC<DealsByStageCardProps> = ({
   stages,
   loading,
@@ -55,6 +63,17 @@ const DealsByStageCard: React.FC<DealsByStageCardProps> = ({
       </div>
     );
   }
+
+  // Sort stages according to STAGE_ORDER
+  const sortedStages = [...stages].sort((a, b) => {
+    const aIdx = STAGE_ORDER.indexOf(a.stage);
+    const bIdx = STAGE_ORDER.indexOf(b.stage);
+    if (aIdx === -1 && bIdx === -1) return 0;
+    if (aIdx === -1) return 1;
+    if (bIdx === -1) return -1;
+    return aIdx - bIdx;
+  });
+
   return (
     <div className='card'>
       <h4 className='text-lg font-semibold text-gray-800 mb-4'>
@@ -72,7 +91,7 @@ const DealsByStageCard: React.FC<DealsByStageCardProps> = ({
             </tr>
           </thead>
           <tbody>
-            {stages.map((stage) => (
+            {sortedStages.map((stage) => (
               <tr
                 key={stage.stage}
                 className='border-b last:border-0'>
