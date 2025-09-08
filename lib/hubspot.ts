@@ -785,6 +785,106 @@ class HubSpotService {
   }
 
   /**
+   * Returns top N deals in the 'payed' stage (considered open), ordered by amount desc.
+   * Uses DEAL_PAYED_STAGE env var to match internal stage value; defaults to 'payed'.
+   * We first fetch open deals, then filter by the payed stage to avoid relying on label mapping.
+   */
+  async getTopPayedDeals(
+    _start: number,
+    _end: number,
+    limit = 10,
+    stageParam?: string
+  ) {
+    const payedStage = process.env.DEAL_PAYED_STAGE || 'payed';
+    const altPaidStage = process.env.DEAL_PAID_STAGE || 'paid';
+    let stageCandidates = (
+      stageParam || `contractsent,${payedStage},${altPaidStage}`
+    )
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    if (!stageParam) {
+      try {
+        const props = await fetchDealProperties();
+        const dealstage = props.results?.find(
+          (p: any) => p.name === 'dealstage'
+        );
+        if (dealstage && Array.isArray(dealstage.options)) {
+          const discovered: string[] = [];
+          for (const opt of dealstage.options) {
+            const label = String(opt.label || '').toLowerCase();
+            if (
+              label === 'payed' ||
+              label === 'paid' ||
+              label.includes('pay')
+            ) {
+              if (opt.value)
+                discovered.push(String(opt.value).toLowerCase());
+            }
+          }
+          if (discovered.length > 0) {
+            stageCandidates = Array.from(
+              new Set([...stageCandidates, ...discovered])
+            );
+          }
+        }
+      } catch {}
+    }
+    const dealsData = await this.searchObjects(
+      'deals',
+      [
+        {
+          filters: [
+            {
+              propertyName: 'dealstage',
+              operator: 'NEQ',
+              value: 'closedwon',
+            },
+            {
+              propertyName: 'dealstage',
+              operator: 'NEQ',
+              value: 'closedlost',
+            },
+          ],
+        },
+      ],
+      ['dealname', 'amount', 'createdate', 'dealstage']
+    );
+    const isPayedStage = (stage?: string) => {
+      if (!stage) return false;
+      const normalized = stage.toLowerCase();
+      return stageCandidates.includes(normalized);
+    };
+    const filtered = dealsData.results.filter((d: any) =>
+      isPayedStage(d.properties.dealstage)
+    );
+    const sorted = filtered
+      .filter((d: any) => d.properties.amount)
+      .sort(
+        (a: any, b: any) =>
+          parseFloat(b.properties.amount) -
+          parseFloat(a.properties.amount)
+      )
+      .slice(0, limit);
+    return Promise.all(
+      sorted.map(async (deal: any) => {
+        const [company, contacts] = await Promise.all([
+          this.getDealCompany(deal.id),
+          this.getDealContacts(deal.id),
+        ]);
+        return {
+          company,
+          contacts,
+          name: deal.properties.dealname || 'Deal',
+          amount: deal.properties.amount
+            ? parseFloat(deal.properties.amount)
+            : 0,
+        };
+      })
+    );
+  }
+
+  /**
    * Returns today's activity summary: closed tasks, new contacts, new companies, new deals (name and sum)
    */
   async getTodayActivitySummary() {
