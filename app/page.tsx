@@ -243,13 +243,14 @@ export default function Home() {
 
   const [topOpenDeals, setTopOpenDeals] = React.useState([]);
   const [topLostDeals, setTopLostDeals] = React.useState([]);
+  const [topPayedDeals, setTopPayedDeals] = React.useState([]);
   const [topOpenLostLoading, setTopOpenLostLoading] =
     React.useState(false);
   const [topOpenLostError, setTopOpenLostError] = React.useState<
     string | null
   >(null);
 
-  // Fetch Top Open/Lost Deals when timeRange changes
+  // Fetch Top Open/Lost/Payed Deals when timeRange changes
   React.useEffect(() => {
     const fetchTopOpenLost = async () => {
       setTopOpenLostLoading(true);
@@ -259,17 +260,19 @@ export default function Home() {
         const period = timeRange * 24 * 60 * 60 * 1000;
         const start = timeRange === 0 ? 0 : now - period;
         const end = now;
-        const [openRes, lostRes] = await Promise.all([
+        const [openRes, lostRes, payedRes] = await Promise.all([
           fetch(`/api/deals/top-open?start=${start}&end=${end}`),
           fetch(`/api/deals/top-lost?start=${start}&end=${end}`),
+          fetch(`/api/deals/top-payed?start=${start}&end=${end}`),
         ]);
-        if (!openRes.ok || !lostRes.ok)
-          throw new Error('Failed to fetch open/lost deals');
+        if (!openRes.ok || !lostRes.ok || !payedRes.ok)
+          throw new Error('Failed to fetch open/lost/payed deals');
         setTopOpenDeals(await openRes.json());
         setTopLostDeals(await lostRes.json());
+        setTopPayedDeals(await payedRes.json());
       } catch (err: any) {
         setTopOpenLostError(
-          err.message || 'Failed to fetch open/lost deals'
+          err.message || 'Failed to fetch open/lost/payed deals'
         );
       } finally {
         setTopOpenLostLoading(false);
@@ -820,16 +823,20 @@ export default function Home() {
             </div>
           )}
         </motion.div>
-        {/* Top Open/Lost Deals Section */}
+        {/* Top Open/Lost/Payed Deals Section */}
         <motion.div
           variants={itemVariants}
           initial='hidden'
           animate='visible'
           className='mb-8 w-full'>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-8 w-full'>
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full'>
             <TopDealsCard
               title='Top 10 Open Deals'
               deals={topOpenDeals}
+            />
+            <TopDealsCard
+              title='Top 10 Payed Deals'
+              deals={topPayedDeals}
             />
             <TopDealsCard
               title='Top 10 Lost Deals'
@@ -838,7 +845,7 @@ export default function Home() {
           </div>
           {topOpenLostLoading && (
             <div className='text-center text-gray-500 mt-2'>
-              Loading open/lost deals...
+              Loading open/lost/payed deals...
             </div>
           )}
           {topOpenLostError && (
