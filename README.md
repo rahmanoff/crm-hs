@@ -1,6 +1,6 @@
 # HubSpot CRM Dashboard
 
-A modern, interactive dashboard for HubSpot CRM that provides real-time insights into your contacts, companies, deals, and tasks.
+AI assisted vibecode project. A modern, interactive dashboard for HubSpot CRM that provides real-time insights into your contacts, companies, deals, and tasks.
 
 ## 🚀 Features
 
