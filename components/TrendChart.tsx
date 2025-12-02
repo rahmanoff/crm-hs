@@ -57,14 +57,67 @@ export default function TrendChart({
     return null;
   };
 
-  const ChartComponent: React.ComponentType<any> =
-    type === 'area'
-      ? (AreaChart as unknown as React.ComponentType<any>)
-      : (LineChart as unknown as React.ComponentType<any>);
-  const DataComponent: React.ComponentType<any> =
-    type === 'area'
-      ? (Area as unknown as React.ComponentType<any>)
-      : (Line as unknown as React.ComponentType<any>);
+  // Render charts explicitly per type to keep TypeScript happy (avoid casting)
+  const renderChart = () => {
+    const commonChildren = (
+      <>
+        <CartesianGrid
+          strokeDasharray='4 4'
+          stroke='#d1d5db'
+        />
+        <XAxis
+          dataKey='date'
+          tickFormatter={formatDate}
+          stroke='#6b7280'
+          fontSize={12}
+        />
+        <YAxis
+          stroke='#6b7280'
+          fontSize={12}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        {dataKeys.map((key, index) =>
+          // For each key, render Area or Line depending on chart type
+          type === 'area' ? (
+            <Area
+              key={key}
+              type='monotone'
+              dataKey={key}
+              stroke={colors[index]}
+              fill={colors[index]}
+              fillOpacity={0.1}
+              strokeWidth={2}
+              dot={{ fill: colors[index], strokeWidth: 2, r: 4 }}
+              activeDot={{
+                r: 6,
+                stroke: colors[index],
+                strokeWidth: 2,
+              }}
+            />
+          ) : (
+            <Line
+              key={key}
+              type='monotone'
+              dataKey={key}
+              stroke={colors[index]}
+              strokeWidth={2}
+              dot={{ fill: colors[index], strokeWidth: 2, r: 4 }}
+              activeDot={{
+                r: 6,
+                stroke: colors[index],
+                strokeWidth: 2,
+              }}
+            />
+          )
+        )}
+      </>
+    );
+
+    if (type === 'area') {
+      return <AreaChart data={data}>{commonChildren}</AreaChart>;
+    }
+    return <LineChart data={data}>{commonChildren}</LineChart>;
+  };
 
   return (
     <div className='card'>
@@ -75,40 +128,7 @@ export default function TrendChart({
         <ResponsiveContainer
           width='100%'
           height='100%'>
-          <ChartComponent data={data}>
-            <CartesianGrid
-              strokeDasharray='4 4'
-              stroke='#d1d5db'
-            />
-            <XAxis
-              dataKey='date'
-              tickFormatter={formatDate}
-              stroke='#6b7280'
-              fontSize={12}
-            />
-            <YAxis
-              stroke='#6b7280'
-              fontSize={12}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            {dataKeys.map((key, index) => (
-              <DataComponent
-                key={key}
-                type='monotone'
-                dataKey={key}
-                stroke={colors[index]}
-                fill={type === 'area' ? colors[index] : undefined}
-                fillOpacity={type === 'area' ? 0.1 : undefined}
-                strokeWidth={2}
-                dot={{ fill: colors[index], strokeWidth: 2, r: 4 }}
-                activeDot={{
-                  r: 6,
-                  stroke: colors[index],
-                  strokeWidth: 2,
-                }}
-              />
-            ))}
-          </ChartComponent>
+          {renderChart()}
         </ResponsiveContainer>
       </div>
     </div>
