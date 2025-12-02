@@ -57,8 +57,14 @@ export default function TrendChart({
     return null;
   };
 
-  const ChartComponent = type === 'area' ? AreaChart : LineChart;
-  const DataComponent = type === 'area' ? Area : Line;
+  const ChartComponent: React.ComponentType<any> =
+    type === 'area'
+      ? (AreaChart as unknown as React.ComponentType<any>)
+      : (LineChart as unknown as React.ComponentType<any>);
+  const DataComponent: React.ComponentType<any> =
+    type === 'area'
+      ? (Area as unknown as React.ComponentType<any>)
+      : (Line as unknown as React.ComponentType<any>);
 
   return (
     <div className='card'>

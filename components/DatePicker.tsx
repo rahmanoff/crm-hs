@@ -9,13 +9,27 @@ import 'react-day-picker/dist/style.css';
 import { useCrmStore } from '@/lib/store';
 
 export function DatePicker() {
-  const { dateRange, setDateRange, fetchData } = useCrmStore();
+  // Date range selection is local to this component. We'll compute a ``days`` value
+  // based on the selected range and call the store's `fetchData(days)` so we do
+  // not rely on the global store shape containing `dateRange` / `setDateRange`.
+  const { fetchData } = useCrmStore();
+  const [dateRange, setDateRange] = React.useState<
+    DateRange | undefined
+  >(undefined);
   const [isOpen, setIsOpen] = React.useState(false);
 
   const handleDateChange = (newDateRange?: DateRange) => {
     if (newDateRange?.from && newDateRange?.to) {
       setDateRange(newDateRange);
-      fetchData(newDateRange);
+      // Convert the selected date range to number of days and call fetchData
+      // with that number so the store's fetch handler remains stable.
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const days = Math.ceil(
+        (newDateRange.to.getTime() - newDateRange.from.getTime()) /
+          msPerDay
+      );
+      // If days is 0 (same-day range), use 1 as the smallest meaningful range.
+      fetchData(Math.max(days, 1));
       setIsOpen(false);
     }
   };
