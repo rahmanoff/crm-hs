@@ -43,10 +43,18 @@
     "babel-jest": "^30.0.4",
     "eslint": "^8",
     "eslint-config-next": "14.0.4",
+    "husky": "^9.1.7",
     "jest": "^30.0.3",
     "jest-environment-jsdom": "^30.0.2",
+    "lint-staged": "^13.3.0",
     "ts-jest": "^29.4.0",
     "typescript": "^5"
+  },
+  "prepare": "husky install",
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "npm run lint --silent"
+    ]
   },
   "engines": {
     "node": ">=18.0.0",
