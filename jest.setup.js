@@ -65,3 +65,29 @@ if (typeof global.Response === 'undefined') {
 // Centralized axios mock for all tests
 import axios from 'axios';
 jest.mock('axios');
+
+// Polyfill ResizeObserver for Recharts ResponsiveContainer which uses it
+if (typeof global.ResizeObserver === 'undefined') {
+  class ResizeObserverMock {
+    constructor(callback) {
+      this.callback = callback;
+      this.elements = new Set();
+    }
+    observe(element) {
+      this.elements.add(element);
+      // Call the callback immediately with a mocked contentRect
+      const entry = {
+        target: element,
+        contentRect: { width: 800, height: 400 },
+      };
+      this.callback([entry]);
+    }
+    unobserve(element) {
+      this.elements.delete(element);
+    }
+    disconnect() {
+      this.elements.clear();
+    }
+  }
+  global.ResizeObserver = ResizeObserverMock;
+}
