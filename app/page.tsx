@@ -750,7 +750,8 @@ export default function Home() {
               <div className='h-full flex items-center justify-center p-6 bg-white border border-gray-200 rounded-lg text-center text-gray-700'>
                 <div>
                   <p className='font-semibold'>
-                    Trend data is not available for the "All Time" view.
+                    Trend data is not available for the &quot;All
+                    Time&quot; view.
                   </p>
                   <p className='text-sm text-gray-500'>
                     Please select a 30 or 90-day range to see trends.
@@ -777,7 +778,8 @@ export default function Home() {
               <div className='h-full flex items-center justify-center p-6 bg-white border border-gray-200 rounded-lg text-center text-gray-700'>
                 <div>
                   <p className='font-semibold'>
-                    Trend data is not available for the "All Time" view.
+                    Trend data is not available for the &quot;All
+                    Time&quot; view.
                   </p>
                   <p className='text-sm text-gray-500'>
                     Please select a 30 or 90-day range to see trends.

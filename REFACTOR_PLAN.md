@@ -61,3 +61,38 @@ Building on the initial scalability improvements in Phase 2, this phase will foc
 
 - [ ] **Review and Optimize API Route Handlers**:
   - After refactoring `HubSpotService`, audit the API routes (`app/api/metrics/route.ts`, etc.) to ensure they correctly utilize the new, more efficient service methods.
+
+---
+
+### Phase 6: Security & CI (Current Priority)
+
+- [x] **Run `npm audit` and apply quick fixes**: I ran `npm audit fix` to patch automatically fixable vulnerabilities and validated the app's tests and type-checks.
+- [x] **Add Dependabot**: configured weekly Dependabot to open PRs for dependency upgrades automatically.
+- [x] **Add CI pre-checks**: Update Azure Static Web Apps workflow with `pre-checks` job to run lint, type-check, tests, and `npm audit` before deployment.
+- [ ] **Add SCA (Snyk/GitHub Advanced Security)**: Recommend enabling Snyk or GitHub Advanced Security to scan for vulnerabilities and secret scanning.
+- [ ] **Upgrade high-risk transitive dependencies**: Review and escalate fixes for packages like `axios`, `form-data`, and other transitive deps requiring major version updates.
+
+---
+
+### Phase 7: Major Upgrades & Migration (Next.js, React, Recharts)
+
+Upgrade strategy:
+
+1. Create a dedicated branch for each major upgrade (e.g., `chore/upgrade-next-15`, `chore/upgrade-next-16`, or `chore/upgrade-react-19`).
+2. Upgrade incrementally: major upgrades should be staged from minor releases (e.g., Next 14 -> 15 -> 16) rather than jumping directly to the latest major release.
+3. For each step:
+
+- Run `npm install` for the target major (e.g., `npm install next@^15`) and execute the test suite, build, and lint tasks.
+- Update code for breaking changes based on the framework's migration guide.
+- Write new tests for any added/changed behavior (especially for Recharts updates & component API changes).
+- Validate static & dynamic routes, edge functions, and SSR vs. SSG behaviors (if applicable).
+
+4. Recharts migration guidance:
+
+- Start by bumping to the next major (2.x -> 3.x) in a separate branch.
+- Ensure `ResponsiveContainer` and `Tooltip` API differences are handled; tests should assert chart elements render with expected props.
+- Update the test setup for `ResizeObserver` if necessary.
+
+5. Finalize and merge each major tick with a PR that includes: README updates, migration notes, and a list of resolved issues and/or breaking changes.
+
+Estimated effort: 1-3 days per major migration, depending on the number of breaking changes and the amount of test coverage.
