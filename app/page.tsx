@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
@@ -169,7 +169,6 @@ function TodayActivityCard({
 }
 
 export default function Home() {
-  // Move skeletonCardConfigs and animation variants to the top of the component
   const skeletonCardConfigs = [
     { key: 'totalContacts', span: 'xl:col-span-3' },
     { key: 'totalCompanies', span: 'xl:col-span-3' },
@@ -205,164 +204,21 @@ export default function Home() {
     timeRange,
     taskMetrics,
     todayActivity,
+    topWonDeals,
+    topNewDeals,
+    topOpenDeals,
+    topLostDeals,
+    topPayedDeals,
+    topWonEntities,
+    topLostEntities,
+    dealsByStage,
+    topDealsLoading,
+    topDealsError,
+    topEntitiesLoading,
+    topEntitiesError,
+    dealsByStageLoading,
+    dealsByStageError,
   } = useCrmStore();
-
-  const [topWonDeals, setTopWonDeals] = React.useState([]);
-  const [topNewDeals, setTopNewDeals] = React.useState([]);
-  const [topDealsLoading, setTopDealsLoading] = React.useState(false);
-  const [topDealsError, setTopDealsError] = React.useState<
-    string | null
-  >(null);
-
-  // Fetch Top Deals when timeRange changes
-  React.useEffect(() => {
-    const fetchTopDeals = async () => {
-      setTopDealsLoading(true);
-      setTopDealsError(null);
-      try {
-        const now = Date.now();
-        const period = timeRange * 24 * 60 * 60 * 1000;
-        const start = timeRange === 0 ? 0 : now - period;
-        const end = now;
-        const [wonRes, newRes] = await Promise.all([
-          fetch(`/api/deals/top-won?start=${start}&end=${end}`),
-          fetch(`/api/deals/top-new?start=${start}&end=${end}`),
-        ]);
-        if (!wonRes.ok || !newRes.ok)
-          throw new Error('Failed to fetch top deals');
-        setTopWonDeals(await wonRes.json());
-        setTopNewDeals(await newRes.json());
-      } catch (err: any) {
-        setTopDealsError(err.message || 'Failed to fetch top deals');
-      } finally {
-        setTopDealsLoading(false);
-      }
-    };
-    fetchTopDeals();
-  }, [timeRange]);
-
-  const [topOpenDeals, setTopOpenDeals] = React.useState([]);
-  const [topLostDeals, setTopLostDeals] = React.useState([]);
-  const [topPayedDeals, setTopPayedDeals] = React.useState([]);
-  const [topOpenLostLoading, setTopOpenLostLoading] =
-    React.useState(false);
-  const [topOpenLostError, setTopOpenLostError] = React.useState<
-    string | null
-  >(null);
-
-  // Fetch Top Open/Lost/Payed Deals when timeRange changes
-  React.useEffect(() => {
-    const fetchTopOpenLost = async () => {
-      setTopOpenLostLoading(true);
-      setTopOpenLostError(null);
-      try {
-        const now = Date.now();
-        const period = timeRange * 24 * 60 * 60 * 1000;
-        const start = timeRange === 0 ? 0 : now - period;
-        const end = now;
-        const [openRes, lostRes, payedRes] = await Promise.all([
-          fetch(`/api/deals/top-open?start=${start}&end=${end}`),
-          fetch(`/api/deals/top-lost?start=${start}&end=${end}`),
-          fetch(`/api/deals/top-payed?start=${start}&end=${end}`),
-        ]);
-        if (!openRes.ok || !lostRes.ok || !payedRes.ok)
-          throw new Error('Failed to fetch open/lost/payed deals');
-        setTopOpenDeals(await openRes.json());
-        setTopLostDeals(await lostRes.json());
-        setTopPayedDeals(await payedRes.json());
-      } catch (err: any) {
-        setTopOpenLostError(
-          err.message || 'Failed to fetch open/lost/payed deals'
-        );
-      } finally {
-        setTopOpenLostLoading(false);
-      }
-    };
-    fetchTopOpenLost();
-  }, [timeRange]);
-
-  // Add state for top won/lost companies/contacts
-  const [topWonEntities, setTopWonEntities] = React.useState<
-    { label: string; sum: number }[]
-  >([]);
-  const [topLostEntities, setTopLostEntities] = React.useState<
-    { label: string; sum: number }[]
-  >([]);
-  const [topEntitiesLoading, setTopEntitiesLoading] =
-    React.useState(false);
-  const [topEntitiesError, setTopEntitiesError] = React.useState<
-    string | null
-  >(null);
-
-  // Fetch Top Won/Lost Companies/Contacts when timeRange changes
-  React.useEffect(() => {
-    const fetchTopEntities = async () => {
-      setTopEntitiesLoading(true);
-      setTopEntitiesError(null);
-      try {
-        const now = Date.now();
-        const period = timeRange * 24 * 60 * 60 * 1000;
-        const start = timeRange === 0 ? 0 : now - period;
-        const end = now;
-        const [wonRes, lostRes] = await Promise.all([
-          fetch(
-            `/api/companies/top-won-entities?start=${start}&end=${end}`
-          ),
-          fetch(
-            `/api/companies/top-lost-entities?start=${start}&end=${end}`
-          ),
-        ]);
-        if (!wonRes.ok || !lostRes.ok)
-          throw new Error('Failed to fetch top companies/contacts');
-        setTopWonEntities(await wonRes.json());
-        setTopLostEntities(await lostRes.json());
-      } catch (err: any) {
-        setTopEntitiesError(
-          err.message || 'Failed to fetch top companies/contacts'
-        );
-      } finally {
-        setTopEntitiesLoading(false);
-      }
-    };
-    fetchTopEntities();
-  }, [timeRange]);
-
-  const [dealsByStage, setDealsByStage] = React.useState([]);
-  const [dealsByStageLoading, setDealsByStageLoading] =
-    React.useState(false);
-  const [dealsByStageError, setDealsByStageError] = React.useState<
-    string | null
-  >(null);
-
-  React.useEffect(() => {
-    const fetchDealsByStage = async () => {
-      setDealsByStageLoading(true);
-      setDealsByStageError(null);
-      try {
-        const res = await fetch(
-          `/api/deals/metrics/stages-metrics?trendPeriod=${timeRange}`
-        );
-        if (!res.ok) throw new Error('Failed to fetch deals by stage');
-        const data = await res.json();
-        setDealsByStage(data.stages || []);
-      } catch (err: unknown) {
-        setDealsByStageError(
-          err instanceof Error
-            ? err.message
-            : String(err) || 'Failed to fetch deals by stage'
-        );
-      } finally {
-        setDealsByStageLoading(false);
-      }
-    };
-    fetchDealsByStage();
-  }, [timeRange]);
-
-  // Remove local state and effects for taskMetrics and todayActivity
-  // Remove useState and useEffect for taskMetrics, todayActivity, taskLoading, todayActivityLoading, todayActivityError
-
-  // Remove loadDashboardData and handleRefresh fetches for /api/activity/metrics and /api/activity/today
-  // Use taskMetrics and todayActivity from the store in the UI
 
   useEffect(() => {
     fetchData(timeRange);
@@ -371,35 +227,8 @@ export default function Home() {
 
   const handleRefresh = async () => {
     try {
-      // Trigger a fresh data load
+      // Trigger a fresh data load, all data fetching is now handled by the store
       await fetchData();
-
-      // Reload task metrics and today activity in parallel
-      const [taskRes, todayRes] = await Promise.all([
-        fetch(`/api/activity/metrics?days=${timeRange}`),
-        fetch('/api/activity/today'),
-      ]);
-
-      // Process task metrics
-      if (taskRes.ok) {
-        const taskData = await taskRes.json();
-        const mapped = {
-          totalTasks: taskData.totalTasks,
-          createdLast30Days: taskData.createdInPeriod,
-          completedLast30Days: taskData.completedInPeriod,
-          overdue: taskData.overdue,
-          openTasks: taskData.openTasks,
-          createdPrev30Days: taskData.createdPrevPeriod,
-        };
-        // setTaskMetrics(mapped); // This line was removed as per the edit hint
-      }
-
-      // Process today activity
-      if (todayRes.ok) {
-        const todayData = await todayRes.json();
-        // setTodayActivity(todayData); // This line was removed as per the edit hint
-      }
-
       toast.success('Data refreshed successfully!');
     } catch (err) {
       toast.error('Failed to refresh data.');
@@ -413,15 +242,8 @@ export default function Home() {
       ? 'Last 90d'
       : 'All Time';
 
-  // Only render metric cards when loading is false and metrics is available
   const shouldShowMetricCards = !loading && metrics;
 
-  // Debug: Log metrics state before rendering cards
-  if (metrics) {
-    console.log('metrics for 90 days:', metrics);
-  }
-
-  // Show skeletons for all cards while loading or if metrics is not yet available
   if (loading || !metrics) {
     return (
       <div className='min-h-screen bg-gray-50'>
@@ -454,7 +276,6 @@ export default function Home() {
           </div>
         </header>
         <main className='max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
-          {/* Today Activity Skeleton at the top */}
           <motion.div
             variants={itemVariants}
             initial='hidden'
@@ -475,19 +296,15 @@ export default function Home() {
               </div>
             ))}
           </motion.div>
-          {/* Trends Row: Revenue + Business Growth */}
           <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
             <ChartSkeleton />
             <ChartSkeleton />
           </div>
-          {/* Remove the old ActivityFeedSkeleton from the bottom */}
-          {/* <ActivityFeedSkeleton /> */}
         </main>
       </div>
     );
   }
 
-  // Only show 'No Data Available' if there is a real error
   if (error) {
     return (
       <div className='min-h-screen bg-red-50 flex items-center justify-center'>
@@ -537,8 +354,8 @@ export default function Home() {
         },
         {
           title: `New Deals (${timeRangeLabel})`,
-          value: metrics.current.newDeals, // Use newDeals instead of totalDeals
-          prev: metrics.previous.newDeals, // Use newDeals for previous period
+          value: metrics.current.newDeals,
+          prev: metrics.previous.newDeals,
           icon: Briefcase,
           key: 'totalDeals',
           format: 'number',
@@ -557,7 +374,7 @@ export default function Home() {
         {
           title: `Active Deals`,
           value: metrics.allOpenDealsSum ?? 0,
-          prev: undefined, // No period comparison for all-time open deals
+          prev: undefined,
           icon: LineChartIcon,
           key: 'activeDeals',
           format: 'currency',
@@ -586,7 +403,7 @@ export default function Home() {
         },
         {
           title: `Close Rate (${timeRangeLabel})`,
-          value: metrics.current.valueCloseRate, // Use value-based as main
+          value: metrics.current.valueCloseRate,
           prev: metrics.previous.valueCloseRate,
           icon: Target,
           key: 'conversionRate',
@@ -597,7 +414,6 @@ export default function Home() {
           ],
         },
         {
-          // Tasks card: all period-dependent values use the selected time range
           title: `New Tasks (${timeRangeLabel})`,
           value: taskMetrics ? taskMetrics.createdLast30Days : 0,
           prev: taskMetrics ? taskMetrics.createdPrev30Days : undefined,
@@ -624,7 +440,6 @@ export default function Home() {
 
   return (
     <div className='min-h-screen bg-gray-50'>
-      {/* App-styled slow-loading indicator below header */}
       <header className='bg-white shadow-sm border-b border-gray-200'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
           <div className='flex flex-col sm:flex-row sm:justify-between sm:items-center py-4 gap-4 sm:gap-0'>
@@ -653,7 +468,6 @@ export default function Home() {
       </header>
 
       <main className='max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
-        {/* Today Activity Card at the top */}
         <motion.div
           variants={itemVariants}
           initial='hidden'
@@ -661,11 +475,10 @@ export default function Home() {
           className='mb-8'>
           <TodayActivityCard
             data={todayActivity}
-            loading={loading} // Use loading from store
-            error={error} // Use error from store
+            loading={loading}
+            error={error}
           />
         </motion.div>
-        {/* Deals By Stage Section */}
         <motion.div
           variants={itemVariants}
           initial='hidden'
@@ -677,7 +490,6 @@ export default function Home() {
             error={dealsByStageError}
           />
         </motion.div>
-        {/* Metric Cards and Trends */}
         <motion.div
           variants={containerVariants}
           initial='hidden'
@@ -685,15 +497,6 @@ export default function Home() {
           className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-6 mb-8'>
           {shouldShowMetricCards
             ? metricCards.map((metric) => {
-                // Debug: Log props passed to each MetricCard
-                console.log(
-                  'MetricCard',
-                  metric.key,
-                  'value:',
-                  metric.value,
-                  'prev:',
-                  metric.prev
-                );
                 return (
                   <motion.div
                     key={metric.key}
@@ -714,8 +517,7 @@ export default function Home() {
                         ? 'xl:col-span-3'
                         : 'xl:col-span-3'
                     }>
-                    {/* Show skeleton for New Tasks card if task metrics are still loading */}
-                    {metric.key === 'totalTasks' && loading ? ( // Use loading from store
+                    {metric.key === 'totalTasks' && loading ? (
                       <MetricCardSkeleton />
                     ) : (
                       <MetricCard
@@ -740,7 +542,6 @@ export default function Home() {
               })
             : null}
         </motion.div>
-        {/* Trends Row: Revenue + Business Growth */}
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
           <motion.div
             variants={itemVariants}
@@ -798,7 +599,6 @@ export default function Home() {
             )}
           </motion.div>
         </div>
-        {/* Top Deals Section moved to bottom */}
         <motion.div
           variants={itemVariants}
           initial='hidden'
@@ -825,7 +625,6 @@ export default function Home() {
             </div>
           )}
         </motion.div>
-        {/* Top Open/Lost/Payed Deals Section */}
         <motion.div
           variants={itemVariants}
           initial='hidden'
@@ -845,18 +644,17 @@ export default function Home() {
               deals={topLostDeals}
             />
           </div>
-          {topOpenLostLoading && (
+          {topDealsLoading && (
             <div className='text-center text-gray-500 mt-2'>
               Loading open/lost/payed deals...
             </div>
           )}
-          {topOpenLostError && (
+          {topDealsError && (
             <div className='text-center text-red-500 mt-2'>
-              {topOpenLostError}
+              {topDealsError}
             </div>
           )}
         </motion.div>
-        {/* Top Won/Lost Companies/Contacts Section */}
         <motion.div
           variants={itemVariants}
           initial='hidden'

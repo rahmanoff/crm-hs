@@ -1,14 +1,12 @@
-import { SimplePublicObjectWithAssociations } from '@hubspot/api-client/lib/codegen/crm/v3/objects/tasks/models/SimplePublicObjectWithAssociations';
+import { SimplePublicObjectWithAssociations } from '@hubspot/api-client/lib/codegen/crm/objects/tasks/models/SimplePublicObjectWithAssociations';
+import { getMetricDateRanges } from '../dateUtils';
 
 export function calculateTaskMetrics(
   tasks: SimplePublicObjectWithAssociations[],
   days: number
 ) {
   const now = Date.now();
-  const PERIOD = days * 24 * 60 * 60 * 1000;
-  const start = now - PERIOD;
-  const prevStart = start - PERIOD;
-  const prevEnd = start;
+  const { start, prevStart, prevEnd } = getMetricDateRanges(days, now);
 
   let createdInPeriod = 0;
   let completedInPeriod = 0;

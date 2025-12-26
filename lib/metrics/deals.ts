@@ -1,5 +1,6 @@
 import { hubSpotService } from '../hubspot';
 import { HubSpotDeal } from '../hubspot';
+import { getMetricDateRanges } from '../dateUtils';
 
 export interface DealMetrics {
   totalDeals: number;
@@ -30,10 +31,7 @@ export function getDealMetrics(
   days: number,
   now: number = Date.now()
 ): DealMetrics {
-  const PERIOD = days * 24 * 60 * 60 * 1000;
-  const start = now - PERIOD;
-  const prevStart = start - PERIOD;
-  const prevEnd = start;
+  const { start, prevStart, prevEnd } = getMetricDateRanges(days, now);
 
   let totalDeals = deals.length;
   let newDeals = 0;

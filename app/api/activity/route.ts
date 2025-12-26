@@ -5,55 +5,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const { searchParams, pathname } = new URL(request.url);
-  if (pathname.endsWith('/metrics')) {
-    // Fetch all tasks
-    const allTasksData = await hubSpotService.searchObjects(
-      'tasks',
-      [],
-      [
-        'hs_createdate',
-        'hs_task_status',
-        'hs_task_completion_date',
-        'hs_timestamp',
-      ]
-    );
-    const now = Date.now();
-    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-    const start30 = now - THIRTY_DAYS;
-    let totalTasks = allTasksData.total;
-    let createdLast30Days = 0;
-    let completedLast30Days = 0;
-    let overdue = 0;
-    for (const task of allTasksData.results) {
-      const created = task.properties.hs_createdate
-        ? new Date(task.properties.hs_createdate).getTime()
-        : null;
-      const completed = task.properties.hs_task_completion_date
-        ? new Date(task.properties.hs_task_completion_date).getTime()
-        : null;
-      const due = task.properties.hs_timestamp
-        ? new Date(task.properties.hs_timestamp).getTime()
-        : null;
-      const status = task.properties.hs_task_status;
-      if (created && created >= start30 && created <= now)
-        createdLast30Days++;
-      if (
-        status === 'COMPLETED' &&
-        completed &&
-        completed >= start30 &&
-        completed <= now
-      )
-        completedLast30Days++;
-      if (status !== 'COMPLETED' && due && due < now) overdue++;
-    }
-    const metrics = {
-      totalTasks,
-      createdLast30Days,
-      completedLast30Days,
-      overdue,
-    };
-    return NextResponse.json(metrics);
-  }
   const startTs = searchParams.get('startTs');
   const endTs = searchParams.get('endTs');
   const completedStartTs = searchParams.get('completedStartTs');
@@ -89,8 +40,15 @@ export async function GET(request: NextRequest) {
         tasks: tasksData.results.slice(0, 100),
       });
     } catch (error: any) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'An unknown error occurred';
       return NextResponse.json(
-        { error: error.message || 'Unknown error' },
+        {
+          error: 'Failed to fetch tasks by date range',
+          details: errorMessage,
+        },
         { status: 500 }
       );
     }
@@ -109,8 +67,15 @@ export async function GET(request: NextRequest) {
       );
       return NextResponse.json({ totalTasks: allTasksData.total });
     } catch (error: any) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'An unknown error occurred';
       return NextResponse.json(
-        { error: error.message || 'Unknown error' },
+        {
+          error: 'Failed to inspect first tasks',
+          details: errorMessage,
+        },
         { status: 500 }
       );
     }
@@ -144,8 +109,15 @@ export async function GET(request: NextRequest) {
         tasks,
       });
     } catch (error: any) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'An unknown error occurred';
       return NextResponse.json(
-        { error: error.message || 'Unknown error' },
+        {
+          error: 'Failed to inspect first tasks',
+          details: errorMessage,
+        },
         { status: 500 }
       );
     }
@@ -193,8 +165,15 @@ export async function GET(request: NextRequest) {
         })),
       });
     } catch (error: any) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'An unknown error occurred';
       return NextResponse.json(
-        { error: error.message || 'Unknown error' },
+        {
+          error: 'Failed to fetch completed tasks by date range',
+          details: errorMessage,
+        },
         { status: 500 }
       );
     }

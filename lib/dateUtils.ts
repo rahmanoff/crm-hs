@@ -93,3 +93,14 @@ export function buildAndFilter(filters: any[]) {
     },
   ];
 }
+
+export function getMetricDateRanges(
+  days: number,
+  now: number = Date.now()
+) {
+  const PERIOD = days * 24 * 60 * 60 * 1000;
+  const start = now - PERIOD;
+  const prevStart = start - PERIOD;
+  const prevEnd = start;
+  return { PERIOD, start, prevStart, prevEnd };
+}

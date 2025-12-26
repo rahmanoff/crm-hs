@@ -1,6 +1,15 @@
 import type { Adapter } from 'next-auth/adapters';
-import { PrismaClient } from '@prisma/client';
-import type { AdapterUser as NextAuthAdapterUser, AdapterAccount, AdapterSession, VerificationToken } from 'next-auth/adapters';
+import {
+  PrismaClient,
+  Account as PrismaAccount,
+  AccountType,
+} from '@prisma/client';
+import type {
+  AdapterUser as NextAuthAdapterUser,
+  AdapterAccount,
+  AdapterSession,
+  VerificationToken,
+} from 'next-auth/adapters';
 
 // Custom AdapterUser type that includes our roles and permissions
 // This should align with the augmented types in types/next-auth.d.ts
@@ -9,9 +18,28 @@ interface CustomAdapterUser extends NextAuthAdapterUser {
   permissions: string[];
 }
 
+// Helper function to map Prisma Account to NextAuth AdapterAccount
+function mapPrismaAccountToAdapterAccount(
+  prismaAccount: PrismaAccount
+): AdapterAccount {
+  return {
+    ...prismaAccount,
+    type: prismaAccount.type as AdapterAccount['type'],
+    refresh_token: prismaAccount.refresh_token ?? undefined,
+    access_token: prismaAccount.access_token ?? undefined,
+    expires_at: prismaAccount.expires_at ?? undefined,
+    token_type: prismaAccount.token_type ?? undefined,
+    scope: prismaAccount.scope ?? undefined,
+    id_token: prismaAccount.id_token ?? undefined,
+    session_state: prismaAccount.session_state ?? undefined,
+  };
+}
+
 export function CustomPrismaAdapter(p: PrismaClient): Adapter {
   return {
-    async createUser(user: Omit<CustomAdapterUser, 'id'>): Promise<CustomAdapterUser> {
+    async createUser(
+      user: Omit<CustomAdapterUser, 'id'>
+    ): Promise<CustomAdapterUser> {
       const createdUser = await p.user.create({
         data: {
           email: user.email,
@@ -22,13 +50,26 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
         },
       });
       // Ensure roles and permissions are always defined, even if empty on creation
-      return { ...createdUser, id: createdUser.id, roles: user.roles || [], permissions: user.permissions || [] };
+      return {
+        ...createdUser,
+        id: createdUser.id,
+        roles: user.roles || [],
+        permissions: user.permissions || [],
+      };
     },
     async getUser(id: string): Promise<CustomAdapterUser | null> {
       const user = await p.user.findUnique({
         where: { id },
         include: {
-          roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: { include: { permission: true } },
+                },
+              },
+            },
+          },
           permissions: { include: { permission: true } },
         },
       });
@@ -39,16 +80,29 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
         permissions: [
           ...user.permissions.map((up) => up.permission.name),
           ...user.roles.flatMap((ur) =>
-            ur.role.permissions.map((rp: { permission: { name: string } }) => rp.permission.name)
+            ur.role.permissions.map(
+              (rp: { permission: { name: string } }) =>
+                rp.permission.name
+            )
           ),
         ],
       };
     },
-    async getUserByEmail(email: string): Promise<CustomAdapterUser | null> {
+    async getUserByEmail(
+      email: string
+    ): Promise<CustomAdapterUser | null> {
       const user = await p.user.findUnique({
         where: { email },
         include: {
-          roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+          roles: {
+            include: {
+              role: {
+                include: {
+                  permissions: { include: { permission: true } },
+                },
+              },
+            },
+          },
           permissions: { include: { permission: true } },
         },
       });
@@ -59,7 +113,10 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
         permissions: [
           ...user.permissions.map((up) => up.permission.name),
           ...user.roles.flatMap((ur) =>
-            ur.role.permissions.map((rp: { permission: { name: string } }) => rp.permission.name)
+            ur.role.permissions.map(
+              (rp: { permission: { name: string } }) =>
+                rp.permission.name
+            )
           ),
         ],
       };
@@ -67,7 +124,10 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
     async getUserByAccount({
       providerAccountId,
       provider,
-    }: { providerAccountId: string; provider: string }): Promise<CustomAdapterUser | null> {
+    }: {
+      providerAccountId: string;
+      provider: string;
+    }): Promise<CustomAdapterUser | null> {
       const account = await p.account.findUnique({
         where: {
           provider_providerAccountId: { provider, providerAccountId },
@@ -75,7 +135,15 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
         select: {
           user: {
             include: {
-              roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+              roles: {
+                include: {
+                  role: {
+                    include: {
+                      permissions: { include: { permission: true } },
+                    },
+                  },
+                },
+              },
               permissions: { include: { permission: true } },
             },
           },
@@ -89,12 +157,17 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
         permissions: [
           ...user.permissions.map((up) => up.permission.name),
           ...user.roles.flatMap((ur) =>
-            ur.role.permissions.map((rp: { permission: { name: string } }) => rp.permission.name)
+            ur.role.permissions.map(
+              (rp: { permission: { name: string } }) =>
+                rp.permission.name
+            )
           ),
         ],
       };
     },
-    async updateUser(user: Partial<CustomAdapterUser> & Pick<CustomAdapterUser, 'id'>): Promise<CustomAdapterUser> {
+    async updateUser(
+      user: Partial<CustomAdapterUser> & Pick<CustomAdapterUser, 'id'>
+    ): Promise<CustomAdapterUser> {
       const updatedUser = await p.user.update({
         where: { id: user.id },
         data: {
@@ -104,18 +177,25 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
           emailVerified: user.emailVerified,
         },
       });
-      return { ...updatedUser, id: updatedUser.id, roles: user.roles || [], permissions: user.permissions || [] };
+      return {
+        ...updatedUser,
+        id: updatedUser.id,
+        roles: user.roles || [],
+        permissions: user.permissions || [],
+      };
     },
     async deleteUser(userId: string) {
       await p.user.delete({
         where: { id: userId },
       });
     },
-    async linkAccount(account: AdapterAccount): Promise<AdapterAccount> {
+    async linkAccount(
+      account: AdapterAccount
+    ): Promise<AdapterAccount> {
       const newAccount = await p.account.create({
         data: {
           userId: account.userId,
-          type: account.type as 'oauth' | 'email' | 'oidc', // Explicitly cast the type
+          type: account.type as AccountType, // Cast to AccountType enum
           provider: account.provider,
           providerAccountId: account.providerAccountId,
           refresh_token: account.refresh_token,
@@ -127,26 +207,49 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
           session_state: account.session_state,
         },
       });
-      return newAccount;
+      return mapPrismaAccountToAdapterAccount(newAccount);
     },
-    async unlinkAccount({ providerAccountId, provider }: { providerAccountId: string; provider: string }) {
+    async unlinkAccount({
+      providerAccountId,
+      provider,
+    }: {
+      providerAccountId: string;
+      provider: string;
+    }) {
       await p.account.delete({
-        where: { provider_providerAccountId: { provider, providerAccountId } },
+        where: {
+          provider_providerAccountId: { provider, providerAccountId },
+        },
       });
     },
-    async createSession({ sessionToken, userId, expires }: AdapterSession): Promise<AdapterSession> {
+    async createSession({
+      sessionToken,
+      userId,
+      expires,
+    }: AdapterSession): Promise<AdapterSession> {
       const newSession = await p.session.create({
         data: { sessionToken, userId, expires },
       });
       return newSession;
     },
-    async getSessionAndUser(sessionToken: string): Promise<{ session: AdapterSession; user: CustomAdapterUser } | null> {
+    async getSessionAndUser(sessionToken: string): Promise<{
+      session: AdapterSession;
+      user: CustomAdapterUser;
+    } | null> {
       const userAndSession = await p.session.findUnique({
         where: { sessionToken },
         include: {
           user: {
             include: {
-              roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+              roles: {
+                include: {
+                  role: {
+                    include: {
+                      permissions: { include: { permission: true } },
+                    },
+                  },
+                },
+              },
               permissions: { include: { permission: true } },
             },
           },
@@ -162,13 +265,21 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
           permissions: [
             ...user.permissions.map((up) => up.permission.name),
             ...user.roles.flatMap((ur) =>
-              ur.role.permissions.map((rp: { permission: { name: string } }) => rp.permission.name)
+              ur.role.permissions.map(
+                (rp: { permission: { name: string } }) =>
+                  rp.permission.name
+              )
             ),
           ],
         },
       };
     },
-    async updateSession({ sessionToken, userId, expires }: Partial<AdapterSession> & Pick<AdapterSession, 'sessionToken'>): Promise<AdapterSession> {
+    async updateSession({
+      sessionToken,
+      userId,
+      expires,
+    }: Partial<AdapterSession> &
+      Pick<AdapterSession, 'sessionToken'>): Promise<AdapterSession> {
       const updatedSession = await p.session.update({
         where: { sessionToken },
         data: { userId, expires },
@@ -180,13 +291,23 @@ export function CustomPrismaAdapter(p: PrismaClient): Adapter {
         where: { sessionToken },
       });
     },
-    async createVerificationToken({ identifier, expires, token }: VerificationToken): Promise<VerificationToken> {
+    async createVerificationToken({
+      identifier,
+      expires,
+      token,
+    }: VerificationToken): Promise<VerificationToken> {
       const newVerificationToken = await p.verificationToken.create({
         data: { identifier, expires, token },
       });
       return newVerificationToken;
     },
-    async useVerificationToken({ identifier, token }: { identifier: string; token: string }): Promise<VerificationToken | null> {
+    async useVerificationToken({
+      identifier,
+      token,
+    }: {
+      identifier: string;
+      token: string;
+    }): Promise<VerificationToken | null> {
       const verificationToken = await p.verificationToken.findUnique({
         where: { identifier_token: { identifier, token } },
       });
