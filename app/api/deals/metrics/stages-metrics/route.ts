@@ -14,6 +14,7 @@ export async function GET(req: Request) {
   const trendStart = now - periodMs;
   const prevTrendStart = trendStart - periodMs;
   const prevTrendEnd = trendStart;
+  const forceRefresh = searchParams.get('forceRefresh') === 'true';
 
   try {
     // Fetch all deals (no date filter)
@@ -27,7 +28,9 @@ export async function GET(req: Request) {
         'hs_is_closed',
         'hs_is_closed_won',
         'hs_is_closed_lost',
-      ]
+      ],
+      undefined,
+      { forceRefresh }
     );
     const deals = allDealsData.results;
 

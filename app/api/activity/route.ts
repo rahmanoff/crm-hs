@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, pathname } = new URL(request.url);
   const startTs = searchParams.get('startTs');
   const endTs = searchParams.get('endTs');
+  const forceRefresh = searchParams.get('forceRefresh') === 'true';
   const completedStartTs = searchParams.get('completedStartTs');
   const completedEndTs = searchParams.get('completedEndTs');
   if (startTs && endTs) {
@@ -32,7 +33,9 @@ export async function GET(request: NextRequest) {
           'hs_task_completion_date',
           'hs_task_subject',
           'hs_task_status',
-        ]
+        ],
+        undefined,
+        { forceRefresh }
       );
       // Return up to 100 tasks for inspection
       return NextResponse.json({
@@ -63,7 +66,9 @@ export async function GET(request: NextRequest) {
           'hs_task_subject',
           'hs_task_status',
           'hs_task_completion_date',
-        ]
+        ],
+        undefined,
+        { forceRefresh }
       );
       return NextResponse.json({ totalTasks: allTasksData.total });
     } catch (error: any) {
@@ -94,7 +99,9 @@ export async function GET(request: NextRequest) {
       const tasksData = await hubSpotService.searchObjects(
         'tasks',
         [],
-        fields
+        fields,
+        undefined,
+        { forceRefresh }
       );
       const tasks = tasksData.results.slice(0, 10).map((task) => ({
         id: task.id,
@@ -150,7 +157,9 @@ export async function GET(request: NextRequest) {
           'hs_timestamp',
           'hs_task_completion_date',
           'hs_task_status',
-        ]
+        ],
+        undefined,
+        { forceRefresh }
       );
       return NextResponse.json({
         totalTasks: tasksData.total,
@@ -180,7 +189,9 @@ export async function GET(request: NextRequest) {
   }
   // Default: recent activity
   try {
-    const activity = await hubSpotService.getRecentActivity();
+    const activity = await hubSpotService.getRecentActivity(undefined, {
+      forceRefresh,
+    });
     return NextResponse.json(activity);
   } catch (error: any) {
     const errorMessage =

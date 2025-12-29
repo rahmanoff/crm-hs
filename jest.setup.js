@@ -63,7 +63,7 @@ if (typeof global.Response === 'undefined') {
 }
 
 // Centralized axios mock for all tests
-import axios from 'axios';
+const axios = require('axios');
 jest.mock('axios');
 
 // Polyfill ResizeObserver for Recharts ResponsiveContainer which uses it

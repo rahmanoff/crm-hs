@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
         'hs_is_closed',
         'hs_is_closed_won',
         'hs_is_closed_lost',
-      ]
+      ],
+      undefined,
+      { forceRefresh }
     );
     const deals = allDealsData.results;
     const allOpenDeals = deals.filter(

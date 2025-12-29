@@ -11,6 +11,7 @@ export async function GET(req: Request) {
   const now = Date.now();
   const startParam = searchParams.get('start');
   const endParam = searchParams.get('end');
+  const forceRefresh = searchParams.get('forceRefresh') === 'true';
 
   try {
     // Fetch all deals (no date filter) for robust metrics
@@ -27,7 +28,9 @@ export async function GET(req: Request) {
         'hs_is_closed',
         'hs_is_closed_won',
         'hs_is_closed_lost',
-      ]
+      ],
+      undefined,
+      { forceRefresh }
     );
 
     let deals = allDealsData.results;

@@ -9,12 +9,15 @@ export async function GET(req: Request) {
   const end = parseInt(searchParams.get('end') || `${Date.now()}`, 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const stage = searchParams.get('stage') || undefined;
+  const forceRefresh = searchParams.get('forceRefresh') === 'true';
+
   try {
     const deals = await hubSpotService.getTopPayedDeals(
       start,
       end,
       limit,
-      stage
+      stage,
+      { forceRefresh }
     );
     return NextResponse.json(deals);
   } catch (error: any) {

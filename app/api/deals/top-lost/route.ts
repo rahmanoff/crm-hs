@@ -8,11 +8,14 @@ export async function GET(req: Request) {
   const start = parseInt(searchParams.get('start') || '0', 10);
   const end = parseInt(searchParams.get('end') || `${Date.now()}`, 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
+  const forceRefresh = searchParams.get('forceRefresh') === 'true';
+
   try {
     const deals = await hubSpotService.getTopLostDeals(
       start,
       end,
-      limit
+      limit,
+      { forceRefresh }
     );
     return NextResponse.json(deals);
   } catch (error: any) {

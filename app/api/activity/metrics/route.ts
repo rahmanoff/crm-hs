@@ -8,6 +8,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const daysParam = searchParams.get('days');
   const days = daysParam ? parseInt(daysParam, 10) : 30;
+  const forceRefresh = searchParams.get('forceRefresh') === 'true';
 
   try {
     const allTasksData = await hubSpotService.searchObjects(
@@ -18,7 +19,9 @@ export async function GET(req: Request) {
         'hs_task_status',
         'hs_task_completion_date',
         'hs_timestamp',
-      ]
+      ],
+      undefined,
+      { forceRefresh }
     );
 
     const {
