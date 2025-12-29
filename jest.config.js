@@ -19,7 +19,10 @@ const customJestConfig = {
     '/node_modules/(?!(p-limit|yocto-queue|@hubspot/api-client|framer-motion|lucide-react|recharts)/)',
   ],
   transform: {
-    '^.+\\.(ts|tsx|js)$': 'babel-jest',
+    '^.+\\.(ts|tsx|js)$': [
+      'babel-jest',
+      { configFile: '<rootDir>/babel.jest.config.js' },
+    ],
   },
   moduleFileExtensions: ['js', 'ts', 'tsx', 'json'],
 };
@@ -39,7 +42,10 @@ module.exports = {
           '<rootDir>/__mocks__/fileMock.js',
       },
       transform: {
-        '^.+\\.(ts|tsx|js)$': 'babel-jest',
+        '^.+\\.(ts|tsx|js)$': [
+          'babel-jest',
+          { configFile: '<rootDir>/babel.jest.config.js' },
+        ],
       },
       transformIgnorePatterns: [
         '/node_modules/(?!(p-limit|yocto-queue|@hubspot/api-client|framer-motion|lucide-react|recharts)/)',
@@ -59,7 +65,10 @@ module.exports = {
           '<rootDir>/__mocks__/fileMock.js',
       },
       transform: {
-        '^.+\\.(ts|tsx|js)$': 'babel-jest',
+        '^.+\\.(ts|tsx|js)$': [
+          'babel-jest',
+          { configFile: '<rootDir>/babel.jest.config.js' },
+        ],
       },
       transformIgnorePatterns: [
         '/node_modules/(?!(p-limit|yocto-queue|@hubspot/api-client|framer-motion|lucide-react|recharts)/)',
