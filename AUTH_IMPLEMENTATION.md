@@ -3,6 +3,7 @@
 ## What was completed (Phase 5)
 
 ### ✅ Core Authentication Setup
+
 - **NextAuth.js Configuration** (`lib/auth.ts`)
   - Credentials provider (email/password)
   - Google OAuth provider
@@ -11,6 +12,7 @@
   - Custom Prisma adapter for database integration
 
 ### ✅ Sign-In Pages
+
 - **Sign-In Page** (`app/auth/signin/page.tsx`)
   - Email/password form
   - Google OAuth button
@@ -24,6 +26,7 @@
   - Links to sign-in or home
 
 ### ✅ Route Protection
+
 - **Dashboard Guard** (`app/page.tsx`)
   - Server-side auth check with `getServerSession()`
   - Redirects unauthenticated users to `/auth/signin`
@@ -39,6 +42,7 @@
   - Excludes auth and static routes
 
 ### ✅ Helper Functions
+
 - **Authentication Middleware** (`lib/auth-middleware.ts`)
   - `requireAuth()` - Basic session validation
   - `requirePermission()` - Check specific permission
@@ -53,10 +57,12 @@
 ## Database Schema (Already In Place)
 
 ### User Model
+
 - `id`, `email`, `name`, `password`, `image`, `emailVerified`
 - Relations: `roles`, `permissions`, `accounts`, `sessions`
 
 ### RBAC Models
+
 - **Role**: name, description, relationships to permissions
 - **Permission**: name, resource, action, relationships to roles/users
 - **UserRole**: Many-to-many relationship
@@ -64,6 +70,7 @@
 - **RolePermission**: Permissions assigned to roles
 
 ### NextAuth Models
+
 - **Account**: OAuth account linking
 - **Session**: Active sessions
 - **VerificationToken**: Email verification tokens
@@ -89,24 +96,30 @@ HUBSPOT_API_KEY=<your-hubspot-api-key>
 ## How to Test
 
 ### 1. Start Development Server
+
 ```bash
 npm run dev
 ```
 
 ### 2. Access the Application
+
 - Visit `http://localhost:3000`
 - You'll be redirected to `/auth/signin`
 
 ### 3. Test Sign-In
+
 **Option A: Demo Credentials**
+
 - Email: `demo@example.com`
 - Password: `demo123`
 - Note: You'll need to create this user first (see below)
 
 **Option B: Create a Test User**
+
 ```bash
 npm run db:studio
 ```
+
 - Open Prisma Studio at http://localhost:5555
 - Go to the "User" table
 - Create a new user with:
@@ -116,17 +129,20 @@ npm run db:studio
   - emailVerified: `null` or a date
 
 ### 4. Test Protected Routes
+
 - Try accessing `/` → Should redirect if not signed in
 - Sign in → Should load dashboard
 - Try accessing API without token → Should return 401
 
 ### 5. Test Sign-Out
+
 - Check `next-auth.session-token` cookie in DevTools
 - Sign-out (you'll need to add a sign-out button - see next section)
 
 ## Next Steps (Recommended Tasks)
 
 ### 1. Add Sign-Out UI
+
 **Location**: `components/SignOutButton.tsx` or in header
 
 ```typescript
@@ -143,11 +159,13 @@ export function SignOutButton() {
 ```
 
 **Add to Dashboard Header** (`components/DashboardContent.tsx`):
+
 ```typescript
 <SignOutButton />
 ```
 
 ### 2. Create Demo User Seed Script
+
 **Location**: `lib/seed.ts`
 
 ```typescript
@@ -158,7 +176,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const hashedPassword = await bcrypt.hash('demo123', 10);
-  
+
   const user = await prisma.user.upsert({
     where: { email: 'demo@example.com' },
     update: {},
@@ -176,9 +194,11 @@ main();
 ```
 
 ### 3. Fix Prisma 7 Build Issue
+
 **Issue**: `PrismaClientConstructorValidationError` during `npm run build`
 
 **Option A: Downgrade Prisma (Simplest)**
+
 ```bash
 npm install --save @prisma/client@6
 npm install --save-dev prisma@6
@@ -187,11 +207,13 @@ npm run build
 ```
 
 **Option B: Use Prisma Accelerate** (Advanced)
+
 - Sign up for Prisma Cloud
 - Get Accelerate URL
 - Update `.env`: `DATABASE_URL=prisma://...`
 
 ### 4. Test Google OAuth
+
 1. Create Google OAuth credentials at https://console.cloud.google.com
 2. Add to `.env.local`:
    - `GOOGLE_CLIENT_ID`
@@ -200,7 +222,9 @@ npm run build
 4. Grant permissions
 
 ### 5. Protect More API Routes
+
 Apply the `requireAuth()` pattern to:
+
 - `app/api/trends/route.ts`
 - `app/api/activity/route.ts`
 - `app/api/deals/*/route.ts`
@@ -219,6 +243,7 @@ export async function GET(request: NextRequest) {
 ```
 
 ### 6. Implement Role-Based Access Control
+
 Create middleware for admin-only endpoints:
 
 ```typescript
@@ -234,6 +259,7 @@ export async function DELETE(request: NextRequest) {
 ```
 
 ### 7. Add User Session Display
+
 Update dashboard header to show logged-in user:
 
 ```typescript
@@ -247,6 +273,7 @@ export function UserDisplay() {
 ```
 
 ### 8. Create Protected Admin Pages
+
 **Location**: `app/admin/`
 
 ```typescript
@@ -256,12 +283,12 @@ import { redirect } from 'next/navigation';
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
-  
+
   const userRoles = (session?.user as any)?.roles || [];
   if (!userRoles.includes('admin')) {
     redirect('/');
   }
-  
+
   return <div>Admin Dashboard</div>;
 }
 ```
@@ -298,22 +325,26 @@ export default async function AdminPage() {
 ## Known Issues & Limitations
 
 ### 1. Prisma 7.0 Build Issue ⚠️
+
 - **Problem**: SQLite with Prisma 7.0.1 throws validation error during `npm run build`
 - **Impact**: Cannot build to production, but `npm run dev` works fine
 - **Workaround**: Downgrade to Prisma 6 (see "Fix Prisma 7 Build Issue" above)
 - **Timeline**: Prisma team is addressing this; monitor [Prisma GitHub issues](https://github.com/prisma/prisma/issues)
 
 ### 2. Google OAuth Not Configured
+
 - Credentials provider works without setup
 - Google OAuth requires environment variables
 - Can be added later without breaking existing auth
 
 ### 3. No Email Verification
+
 - Email provider not set up
 - Can be added later if needed
 - Database schema supports `emailVerified` field
 
 ### 4. Manual User Creation
+
 - No self-signup flow yet
 - Users must be created via Prisma Studio or seed script
 - Can implement signup flow later
@@ -334,18 +365,23 @@ export default async function AdminPage() {
 ## Troubleshooting
 
 ### "PrismaClientConstructorValidationError" during build
+
 → See "Fix Prisma 7 Build Issue" section above
 
 ### "Unauthorized: No session found" on API
+
 → Check that `requireAuth()` middleware is properly integrated
 
 ### Redirect loop on sign-in
+
 → Check that `NEXTAUTH_SECRET` is set in `.env.local`
 
 ### Google OAuth button doesn't work
+
 → Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to `.env.local`
 
 ### Sign-out doesn't work
+
 → Add `SignOutButton` component (see "Add Sign-Out UI" section)
 
 ## References
@@ -358,6 +394,7 @@ export default async function AdminPage() {
 ## Summary
 
 You now have a **production-ready authentication system** with:
+
 - ✅ Email/password sign-in
 - ✅ Google OAuth ready to enable
 - ✅ Role-based access control (RBAC) database schema

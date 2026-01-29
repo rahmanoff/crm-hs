@@ -186,9 +186,12 @@ export default function SignInPage() {
 
           {/* Footer */}
           <p className='text-center text-sm text-gray-600 mt-6'>
-            Demo credentials:
-            <br />
-            Email: demo@example.com | Password: demo123
+            Don&apos;t have an account?{' '}
+            <a
+              href='/auth/signup'
+              className='text-indigo-600 hover:underline font-semibold'>
+              Sign up
+            </a>
           </p>
         </div>
       </motion.div>
