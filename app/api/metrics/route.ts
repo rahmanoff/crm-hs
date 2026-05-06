@@ -1,11 +1,21 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { hubSpotService } from '@/lib/hubspot';
 import { getDateRange, getPreviousDateRange } from '@/lib/dateUtils';
+import { requireAuth } from '@/lib/auth-middleware';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // Protect this endpoint with authentication
+    const authResult = await requireAuth(request);
+    if (
+      authResult instanceof NextResponse &&
+      authResult.status !== 200
+    ) {
+      return authResult;
+    }
+
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '30', 10);
     const forceRefresh = searchParams.get('refresh') === '1';
@@ -20,14 +30,14 @@ export async function GET(request: NextRequest) {
         0,
         currentRange.start,
         currentRange.end,
-        { forceRefresh }
+        { forceRefresh },
       ));
     } else {
       ({ current, previous } = await hubSpotService.getDashboardMetrics(
         days,
         currentRange.start,
         currentRange.end,
-        { forceRefresh }
+        { forceRefresh },
       ));
     }
 
@@ -47,13 +57,13 @@ export async function GET(request: NextRequest) {
         'hs_is_closed_lost',
       ],
       undefined,
-      { forceRefresh }
+      { forceRefresh },
     );
     const deals = allDealsData.results;
     const allOpenDeals = deals.filter(
       (deal) =>
         deal.properties.dealstage !== 'closedwon' &&
-        deal.properties.dealstage !== 'closedlost'
+        deal.properties.dealstage !== 'closedlost',
     );
     const allOpenDealsCount = allOpenDeals.length;
     const allOpenDealsSum = allOpenDeals.reduce((sum, deal) => {
