@@ -1,98 +1,104 @@
-# HubSpot Dashboard Refactoring & Improvement Plan
+# HubSpot Dashboard Refactoring Plan
 
-This document outlines the roadmap for improving the HubSpot CRM dashboard application, focusing on stability, scalability, and maintainability.
+_Last updated: 2026-05-06_
 
----
+This is the single source of truth for project improvement work. It combines completed work and the prioritized next execution steps.
 
-### Phase 1: Stabilization (Immediate Fixes)
+## 1) Current Snapshot
 
-The priority is to make the application robust and prevent silent failures.
+- Stack: `Next.js 14`, `React 18`, `TypeScript`, App Router.
+- HubSpot integration: HTTP-based (`axios` + Search API), SDK removed.
+- Auth foundation: signup/signin flow + Prisma schema with RBAC-oriented models.
+- Test/tooling baseline: Jest + Testing Library + lint + type-check in place.
 
-- [x] **Standardize API Error Handling for `metrics` route**: Refactor `app/api/metrics/route.ts` to propagate specific errors from the HubSpot API instead of returning default data.
-- [x] **Implement Frontend Error UI**: Update `app/page.tsx` to handle backend errors gracefully, showing a dedicated error screen to the user instead of a dashboard with zeroed-out metrics.
-- [x] **Standardize API Error Handling for `trends` and `activity` routes**: Apply the same error handling pattern to `app/api/trends/route.ts` and `app/api/activity/route.ts` to ensure all endpoints are consistent.
+## 2) Completed Work
 
----
+### Stability and Error Handling
 
-### Phase 2: Scalability & Performance
+- [x] Standardized error handling for `metrics`, `trends`, and `activity` API routes.
+- [x] Added frontend error UI to avoid silent dashboard fallbacks.
 
-Address the core performance bottlenecks to ensure the application works for HubSpot accounts of all sizes.
+### Performance and Scalability
 
-- [x] **Remove Hardcoded Pagination Limits**: In `lib/hubspot.ts`, remove the arbitrary `pageCount` safety limits in `getContacts`, `getCompanies`, `getDeals`, etc., to allow full data fetching.
-- [x] **Implement Robust Rate Limiting**: Replace the basic `setTimeout` delay with a proper exponential backoff strategy for retrying `429` rate-limited requests.
-- [x] **Optimize Data Aggregation**: This is the most significant scalability improvement.
-  - **Done**: Investigated and implemented HubSpot's [Search API](https://developers.hubspot.com/docs/api/crm/search) to perform calculations on their servers, which dramatically reduces the amount of data we need to transfer and process.
+- [x] Removed hardcoded pagination limits in HubSpot service methods.
+- [x] Added stronger retry/rate-limit handling.
+- [x] Shifted aggregation/filtering to HubSpot Search API where possible.
 
----
+### Frontend and UX
 
-### Phase 3: Frontend Enhancements
+- [x] Added Zustand-based global state management.
+- [x] Added dashboard controls (date-range filtering).
 
-Improve the user experience and maintainability of the frontend code.
+### Quality and Delivery
 
-- [x] **Introduce a Global State Manager**: For better state management as complexity grows, integrate a lightweight library like Zustand. This will help manage global state like the current user, dashboard filters, and API loading/error states.
-- [x] **Add Dashboard Controls**: Implement user controls, such as a date range picker, to allow users to filter the dashboard data (e.g., "Last 30 Days," "This Quarter").
+- [x] Added test framework coverage for core service and UI logic.
+- [x] Added CI pre-checks and Dependabot automation.
+- [x] Ran dependency hygiene pass via `npm audit fix`.
 
----
+## 3) Priority Backlog (Execution Order)
 
-### Phase 4: Code Quality & Maintenance
+### P0 - Immediate (this week)
 
-Introduce development practices that ensure long-term stability and ease of maintenance.
+- [ ] Implement environment validation at startup (fail fast on missing required variables).
+- [ ] Add database artifact hygiene:
+  - ignore local SQLite artifacts (`prisma/*.db`, `*.db*`),
+  - document local-vs-production DB workflow.
+- [ ] Standardize API error contract across endpoints:
+  - required: `code`, `message`,
+  - optional debug payload only in non-production.
+- [ ] Sanitize/gate client-side error logs in production.
+- [ ] Add auth tests for signup route:
+  - success,
+  - duplicate email,
+  - invalid payload,
+  - server error branch.
 
-- [x] **Add Unit & Integration Tests**: Implement a testing framework (e.g., Jest, React Testing Library) and add tests for critical components and API services.
-  - Test the `HubSpotService` methods with mocked API responses.
-  - Test React components to ensure they render correctly based on props and state.
-- [ ] **Implement Environment Validation**: Add a startup check to ensure that all required environment variables (i.e., `HUBSPOT_API_KEY`) are present, and fail fast with a clear error message if they are not. (Skipped due to technical issues).
+### P1 - Short-Term (2-4 weeks)
 
----
+- [ ] Implement email verification and password reset flows.
+- [ ] Add auth endpoint hardening:
+  - rate limiting/throttling,
+  - abuse protections (e.g., CAPTCHA when needed),
+  - stronger password policy checks.
+- [ ] Standardize validation schemas (shared `zod` contracts for API + frontend forms).
+- [ ] Add structured logging with request correlation IDs.
+- [ ] Document migration workflow (`prisma migrate`, seed process, rollback notes).
 
-### Phase 5: Advanced Performance Optimization
+### P2 - Mid-Term (1-2 months)
 
-Building on the initial scalability improvements in Phase 2, this phase will focus on hyper-optimizing data fetching logic in `lib/hubspot.ts` to minimize API calls, reduce memory usage, and improve overall dashboard loading speed.
+- [ ] Complete advanced service optimizations:
+  - refactor `getDashboardMetrics` for fewer API calls and lower memory use,
+  - refactor `getTrendData` to rely on filtered search queries,
+  - audit API route handlers to consume optimized methods.
+- [ ] Add integration/contract tests for `metrics`, `trends`, and `activity`.
+- [ ] Introduce observability baseline (latency metrics, error rates, HubSpot rate-limit alerts).
+- [ ] Move cache from in-memory to Redis for multi-instance consistency.
 
-- [ ] **Refactor `getDashboardMetrics` for Efficiency**:
+### P3 - Long-Term (quarter+)
 
-  - Deprecate and remove the `countAllDeals` method.
-  - Leverage `Promise.all` to run data-fetching operations concurrently instead of sequentially.
-  - Replace broad data fetches (e.g., `getDeals(0)`) with targeted `searchObjects` queries. Use filters to have HubSpot perform aggregations for metrics like active, won, and lost deals, and total revenue.
+- [ ] Security posture upgrades:
+  - SCA integration (Snyk or GitHub Advanced Security),
+  - transitive dependency remediation policy,
+  - secrets and audit controls.
+- [ ] RBAC management UI and permission audit history.
+- [ ] Background jobs / pre-aggregation pipeline for heavy analytics workloads.
+- [ ] Multi-tenant readiness (if product direction requires it).
 
-- [ ] **Refactor `getTrendData` for Performance**:
+## 4) Major Upgrade Strategy
 
-  - Modify the function to use `searchObjects` with date range filters. This will offload the filtering from the application to the HubSpot API, resulting in smaller payloads and faster processing.
+- [ ] Upgrade frameworks in isolated branches, one major at a time:
+  - Next.js `14 -> 15 -> 16`
+  - React `18 -> 19`
+  - Recharts `2 -> 3`
+- [ ] For each major upgrade:
+  - run `lint`, `type-check`, `test`, and `build`,
+  - apply migration-guide code changes,
+  - expand regression tests for changed behaviors,
+  - update docs/changelog with breaking changes.
 
-- [ ] **Review and Optimize API Route Handlers**:
-  - After refactoring `HubSpotService`, audit the API routes (`app/api/metrics/route.ts`, etc.) to ensure they correctly utilize the new, more efficient service methods.
+## 5) Definition of Done for Production Readiness
 
----
-
-### Phase 6: Security & CI (Current Priority)
-
-- [x] **Run `npm audit` and apply quick fixes**: I ran `npm audit fix` to patch automatically fixable vulnerabilities and validated the app's tests and type-checks.
-- [x] **Add Dependabot**: configured weekly Dependabot to open PRs for dependency upgrades automatically.
-- [x] **Add CI pre-checks**: Update Azure Static Web Apps workflow with `pre-checks` job to run lint, type-check, tests, and `npm audit` before deployment.
-- [ ] **Add SCA (Snyk/GitHub Advanced Security)**: Recommend enabling Snyk or GitHub Advanced Security to scan for vulnerabilities and secret scanning.
-- [ ] **Upgrade high-risk transitive dependencies**: Review and escalate fixes for packages like `axios`, `form-data`, and other transitive deps requiring major version updates.
-
----
-
-### Phase 7: Major Upgrades & Migration (Next.js, React, Recharts)
-
-Upgrade strategy:
-
-1. Create a dedicated branch for each major upgrade (e.g., `chore/upgrade-next-15`, `chore/upgrade-next-16`, or `chore/upgrade-react-19`).
-2. Upgrade incrementally: major upgrades should be staged from minor releases (e.g., Next 14 -> 15 -> 16) rather than jumping directly to the latest major release.
-3. For each step:
-
-- Run `npm install` for the target major (e.g., `npm install next@^15`) and execute the test suite, build, and lint tasks.
-- Update code for breaking changes based on the framework's migration guide.
-- Write new tests for any added/changed behavior (especially for Recharts updates & component API changes).
-- Validate static & dynamic routes, edge functions, and SSR vs. SSG behaviors (if applicable).
-
-4. Recharts migration guidance:
-
-- Start by bumping to the next major (2.x -> 3.x) in a separate branch.
-- Ensure `ResponsiveContainer` and `Tooltip` API differences are handled; tests should assert chart elements render with expected props.
-- Update the test setup for `ResizeObserver` if necessary.
-
-5. Finalize and merge each major tick with a PR that includes: README updates, migration notes, and a list of resolved issues and/or breaking changes.
-
-Estimated effort: 1-3 days per major migration, depending on the number of breaking changes and the amount of test coverage.
+- [ ] CI gates green: `lint`, `type-check`, `test`, `build`, security checks.
+- [ ] Auth flows fully covered: signup/signin/verify/reset.
+- [ ] Environment and migration workflows documented and enforced.
+- [ ] Monitoring and alerting live for key API and dependency risk metrics.

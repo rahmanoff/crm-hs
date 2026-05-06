@@ -8,7 +8,8 @@ AI assisted vibecode project. A modern, interactive dashboard for HubSpot CRM th
 - **Interactive Charts**: Beautiful visualizations using Recharts
 - **Responsive Design**: Works perfectly on desktop and mobile
 - **Rate Limiting**: Built-in API rate limiting and retry logic
-- **Production Ready**: Optimized for deployment
+- **Authentication Foundation**: Credentials-based auth flow with Prisma-backed users
+- **Production-Oriented Workflow**: CI pre-checks, tests, and typed codebase
 
 ## 📊 Dashboard Metrics
 
@@ -119,20 +120,41 @@ npm start
 ```
 ├── app/                    # Next.js App Router
 │   ├── api/               # API routes
+│   │   ├── auth/signup/   # Signup API endpoint
 │   │   ├── activity/      # Recent activity endpoint
 │   │   ├── metrics/       # Dashboard metrics endpoint
 │   │   └── trends/        # Trend data endpoint
+│   ├── auth/              # Auth pages
+│   │   ├── signin/        # Sign in page
+│   │   ├── signup/        # Sign up page
+│   │   └── error/         # Auth error page
 │   ├── globals.css        # Global styles
 │   ├── layout.tsx         # Root layout
 │   └── page.tsx           # Dashboard page
 ├── components/            # React components
 │   ├── ActivityFeed.tsx   # Activity feed component
+│   ├── DashboardContent.tsx # Main dashboard content
 │   ├── MetricCard.tsx     # Metric card component
 │   └── TrendChart.tsx     # Trend chart component
 ├── lib/                   # Utility libraries
-│   └── hubspot.ts         # HubSpot API service (HTTP-based)
+│   ├── auth.ts            # NextAuth configuration
+│   ├── auth-middleware.ts # Route/session auth helpers
+│   ├── hubspot.ts         # HubSpot API service (HTTP-based)
+│   └── prisma.ts          # Prisma client singleton
+├── prisma/                # Prisma schema and local DB artifacts
+│   └── schema.prisma      # Data models (users, roles, permissions, auth tables)
+├── REFACTOR_PLAN.md       # Single source of truth roadmap
 └── public/                # Static assets
 ```
+
+## 🗺️ Roadmap
+
+Active improvement plan is maintained in `REFACTOR_PLAN.md` (single source of truth), including:
+
+- Completed stabilization/performance/security steps
+- Prioritized backlog (`P0` immediate through long-term initiatives)
+- Major framework upgrade strategy
+- Production readiness definition of done
 
 ## 🎨 UI Style Guide
 
