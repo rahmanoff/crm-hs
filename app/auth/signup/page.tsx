@@ -80,6 +80,7 @@ export default function SignUpPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('Signup response error:', data);
         setError(data.error || 'Failed to create account');
         setLoading(false);
         return;
@@ -92,6 +93,7 @@ export default function SignUpPage() {
         );
       }, 2000);
     } catch (err) {
+      console.error('Signup fetch error:', err);
       setError('An error occurred. Please try again.');
       setLoading(false);
     }

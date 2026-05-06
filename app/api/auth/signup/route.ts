@@ -70,10 +70,15 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('Signup error:', error);
+    console.error('Error details:', error.message, error.code);
     return NextResponse.json(
       {
         error:
           'An error occurred while creating your account. Please try again.',
+        details:
+          process.env.NODE_ENV === 'development'
+            ? error.message
+            : undefined,
       },
       { status: 500 },
     );
